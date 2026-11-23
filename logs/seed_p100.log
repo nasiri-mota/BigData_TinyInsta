@@ -1,0 +1,2 @@
+[p100] U=100 P=100 F=20 -> 100 users + 10000 posts = 10100 entités
+[p100] 10100 entités écrites en 5.0s (2013/s)
