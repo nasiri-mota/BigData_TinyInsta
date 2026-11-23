@@ -1,2 +1,2 @@
 [base] U=1000 P=20 F=20 -> 1000 users + 20000 posts = 21000 entités
-[base] 21000 entités écrites en 56.0s (375/s)
+[base] 21000 entités écrites en 9.8s (2136/s)

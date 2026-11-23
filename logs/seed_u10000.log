@@ -1,0 +1,73 @@
+  erreur (ServiceUnavailable), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 2s
+  erreur (DeadlineExceeded), nouvel essai dans 2s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 2s
+  erreur (DeadlineExceeded), nouvel essai dans 2s
+  erreur (DeadlineExceeded), nouvel essai dans 4s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 4s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 8s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 2s
+  erreur (DeadlineExceeded), nouvel essai dans 2s
+  erreur (DeadlineExceeded), nouvel essai dans 2s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 16s
+  erreur (DeadlineExceeded), nouvel essai dans 4s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 4s
+  erreur (DeadlineExceeded), nouvel essai dans 1s
+  erreur (DeadlineExceeded), nouvel essai dans 2s
+  erreur (DeadlineExceeded), nouvel essai dans 32s
+  erreur (DeadlineExceeded), nouvel essai dans 8s
+  erreur (DeadlineExceeded), nouvel essai dans 2s
+  erreur (DeadlineExceeded), nouvel essai dans 8s
+  erreur (DeadlineExceeded), nouvel essai dans 2s
+  erreur (DeadlineExceeded), nouvel essai dans 4s
+  erreur (DeadlineExceeded), nouvel essai dans 16s
+  erreur (DeadlineExceeded), nouvel essai dans 16s
+  erreur (DeadlineExceeded), nouvel essai dans 4s
+  erreur (DeadlineExceeded), nouvel essai dans 8s
+  erreur (DeadlineExceeded), nouvel essai dans 32s
+  erreur (DeadlineExceeded), nouvel essai dans 8s
+  erreur (DeadlineExceeded), nouvel essai dans 32s
+  erreur (DeadlineExceeded), nouvel essai dans 16s
+  erreur (DeadlineExceeded), nouvel essai dans 16s
+  erreur (DeadlineExceeded), nouvel essai dans 32s
+  erreur (DeadlineExceeded), nouvel essai dans 32s
+[u10000] U=10000 P=20 F=20 -> 10000 users + 200000 posts = 210000 entités
+Traceback (most recent call last):
+  File "/home/nasiri_m95/tinyinsta-2026/bench/seed_exact.py", line 145, in <module>
+    purge(a) if a.purge else seed(a)
+                             ^^^^^^^
+  File "/home/nasiri_m95/tinyinsta-2026/bench/seed_exact.py", line 117, in seed
+    n = run_batches(args, lambda c, b: c.put_multi(b), batches)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nasiri_m95/tinyinsta-2026/bench/seed_exact.py", line 83, in run_batches
+    return sum(ex.map(work, batches))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 619, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 317, in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nasiri_m95/tinyinsta-2026/bench/seed_exact.py", line 80, in work
+    raise RuntimeError("lot abandonné après 6 essais")
+RuntimeError: lot abandonné après 6 essais
