@@ -453,7 +453,17 @@ Total logged: about 6.7 B1 instance-hours. In the extra experiment each of the t
 
 **Datastore operations** (rough estimates from the numbers of requests and entities, with the prices of the `eur3` pricing page: 0.06 USD per 100,000 reads, 0.18 per 100,000 writes, 0.02 per 100,000 deletes, before the free daily quota). Reads in Part 2: 142,341 answered requests times 21 entities, about 3.0 million reads, about 1.8 USD. Writes: at least the 394,800 entities of the final datasets, about 0.7 USD, to which the writes of the datasets that failed and were deleted must be added. Deletes: about 140,000 documents, about 0.03 USD. I did not estimate the reads of Parts 1 and 3 nor those of the extra experiment.
 
-**Billing page.** On 24 Nov 2026 at about 13:00 UTC (`logs/billing_notes.txt`): EUR 3.82 for the current month with the credits excluded, and about EUR 254 left of the EUR 257 welcome credit (value rounded by the page); on 23 Nov, EUR 255.81 were left of EUR 257.47. A later reading, made on the evening of 24 Nov 2026 (the exact time was not recorded), gave EUR 4.42 for 1 to 24 November with the credits excluded, and about EUR 252 left of the EUR 257. The report lags (it still showed EUR 3.82 at 13:00 UTC and at about 17:00 UTC), so the use of the afternoon and of the clean-up may not be fully included and the final total may be higher. It should remain below the 20 USD of the budget alert (my estimate from the instance-hours above, about 6.7 B1 hours in all, and from the Datastore operations; it is not verified).
+**Billing page.** Readings of the Billing console of the project (Reports, with the credits excluded, and Credits). The report lags by several hours, so the first readings do not include the use of the last hours. Times are UTC, as in the logs.
+
+| Reading | Period shown | Cost, credits excluded | Welcome credit left | Comment |
+|---|---|---|---|---|
+| 23 Nov 2026, before the measurements (time not recorded) | not recorded | not recorded | EUR 255.81 of EUR 257.47 | Baseline (`logs/billing_notes.txt`) |
+| 24 Nov 2026, about 13:00 | 1-24 Nov | EUR 3.82 | about EUR 254 of EUR 257 | During Part 3 |
+| 24 Nov 2026, during attempt 2 of the extra experiment (between 16:51 and 17:27) | 1-24 Nov | EUR 3.82 | about EUR 253 of EUR 257 | Cost unchanged since 13:00: the report lags |
+| 24 Nov 2026, evening (time not recorded) | 1-24 Nov | EUR 4.42 | about EUR 252 of EUR 257 | Report still lagging |
+| 24 Nov 2026, 19:34 UTC (time of the command that recorded it) | 1-24 Nov | EUR 4.51 | about EUR 252 of EUR 257 | Last reading before submission |
+
+The welcome credit pays these costs, and the credit left decreases accordingly. The total is probably still incomplete because of the lag, and may be higher in the final report. It should remain below the 20 USD of the budget alert (my estimate from the instance-hours above, about 6.7 B1 hours in all, and from the Datastore operations; it is not verified).
 
 ## Tools and AI assistance
 
