@@ -4,7 +4,7 @@
 **Deployed application (default version):** https://tinyinsta-512819.ew.r.appspot.com
 **Repository:** https://github.com/nasiri-mota/BigData_TinyInsta
 
-**Status:** Parts 1, 2 and 3 are complete. The verdict table, the full validity answers and the cost of the campaign are still to be written.
+**Status:** Parts 1, 2 and 3, the verdict table and the validity answers are complete. Section 5 (cost of the campaign) will be filled in once the billing report is up to date.
 
 ## Summary so far
 
@@ -255,7 +255,30 @@ Median server time of the new code for every F (ms, mean of 2 runs): F = 5 to 25
 
 **Cost and limits of the fix.** The change is about 15 lines in one function (`part3/main.py`); there is no change in the data, the index or the dependencies. The queries are still run one after the other, so the time still grows with the number of groups, by about 21 ms for each additional group of 30 authors (this is an extrapolation beyond F = 100, not a measurement). Two things I did not try: running the group queries in parallel, and storing a precomputed timeline for each user, which would move the cost to the writes. The capacity of Part 2 was not measured again with the new code, and the second candidate bottleneck (one request at a time per instance) was not tried. Each measurement concerns one user (`-u 1`, the user `f<F>_u00000`).
 
-## 3. Validity notes so far (Parts 1, 2 and 3)
+## 3. Verdicts
+
+| Dimension | Scales? | Up to where (tested) | Why (mechanism) | Evidence |
+|---|---|---|---|---|
+| Users (U) | Yes | U from 100 to 10,000 (200,000 posts): 21 to 25 ms per timeline (P = 20, F = 20, one request at a time) | A timeline reads one `User` entity and the 20 most recent posts through an index sorted by author and date: the work depends on the number of authors, not on the total amount of data | Fig. 1a |
+| Posts per user (P) | Yes | P from 10 to 1,000 (U = 100, F = 20): 22 to 24 ms | Same index; only the most recent entries of each author are read | Fig. 1a |
+| Followees (F), original code | Only up to F = 29 | About 20 to 25 ms up to F = 25; about 420 ms at F = 30; about 1.3 s at F = 100 (Part 1), 2.4 s in the session of Part 3 | The `IN` filter accepts at most 30 values (verified); above that the code issues one sequential query per author, about 13 ms each | Fig. 1b, `logs/check_in_limit.log` |
+| Followees (F), with the fix | Yes, in the range tested | F up to 100: 28 ms at F up to 25, 110 ms at F = 90 to 100; 19 to 22 times faster than the original code at F = 100, same session | One query per group of at most 30 authors: about 21 ms for each additional group (queries still sequential) | Fig. 3 |
+| Instances (N) | Almost linearly | N = 1, 2, 4 and C up to 64: saturated throughput 24, 44 and 102 requests per second (speed-up 1.8 and 4.2, efficiency 0.9 to 1.06, within a noise of about 10%) | Each instance saturates at about 24 requests per second from a concurrency of 2; consistent with one request processed at a time per instance (not verified directly); the client was not the bottleneck | Fig. 2a, 2b, `figures/part2_capacity.csv` |
+
+**Overall.** In the ranges tested, the cost of a timeline does not depend on the amount of data (U and P) and the capacity grows almost linearly with the number of instances (each instance serves about 24 timelines per second for F = 20). The weak point of the original application is F: beyond 29 followees the time grows by about 13 ms per followee, and grouping the authors by 30 removes that cliff. Limits of these conclusions: U up to 10,000, P up to 1,000, F up to 100, N up to 4, C up to 64, one region, one dataset per point, 2 repetitions per point.
+
+## 4. Validity
+
+**Answers to the six questions.**
+
+1. *How many instances served each measurement?* Part 1: exactly 1 in all 52 runs. Part 2: 1, 2 and 4 in the 14 runs of each version (42 runs). Part 3: exactly 1 in all 52 runs. Counted as the number of distinct `X-Instance` values among the HTTP 200 answers (`logs/check_part1.txt`, `figures/part2_checks.csv`, `logs/part3_summary.txt`). Before the Part 2 runs, `gcloud app instances list` showed 2 instances for `fixed2` and 4 for `fixed4`.
+2. *Are the runs independent?* Within each version the datasets (Parts 1 and 3) or the concurrency levels (Part 2) were run in random order, with 2 repetitions. The versions were not interleaved: the three versions of Part 2 were measured one after the other within about 70 minutes, and in Part 3 the original code was measured before and after the new code. The measurements of the original code differ by about 8 to 11% inside the Part 3 session and by a factor of 1.35 to 1.8 between the Part 1 and the Part 3 sessions, without explanation. The second repetition is slower than the first in all the cases of Fig. 1a. I therefore compare values only inside one session, and treat differences below about 10% as noise.
+3. *What is the share of the network?* Part 1: client latency minus server time is 12 to 14 ms, about 37% of the latency for F up to 25 and about 1% at F = 100. In the Part 3 session the gap was about 30 ms at F = 20 and 13 to 22 ms for F from 30 to 100, for a reason I do not know. In Part 2 the latency includes the waiting time in the queue of the instance, so the network share was not computed separately.
+4. *What is counted as a failure?* An answer whose status is not 200, or a network error (status 0). Part 1: 0 out of the 52 runs (a pilot run on the autoscaled version had 2 failures out of 924 requests at its start). Part 2: 138 out of 142,479 requests (0.10%), only `gaierror` (92) and `ConnectionRefusedError` (46), none at C = 1 or 2, no HTTP error status. Part 3: 0. The causes of the failures of Part 2 are unknown.
+5. *Is the code path the one I think?* `scripts/check_in_limit.py` proves that `IN` is rejected above 30 values. The fallback to one query per author is read from `main.py`, not instrumented. The equality of the answers of the original and the new code was checked on 40 users of 4 datasets and on one user through the deployed version. The load generator records headers and status, not the content of the answers, so it cannot show that every answer was correct. Parts 1 and 3 query a single user per run (`-u 1`); Part 2 queries many users of `base` with F = 20, which stays on the single-query path.
+6. *How much did it cost?* See section 5.
+
+**Detailed notes by part.**
 
 1. **Instances that served the measurements.** Exactly 1 instance in all 52 runs (`logs/check_part1.txt`, column `instances`, computed from the `X-Instance` header).
 2. **Independence of runs.** Datasets were run in random order, with 2 repetitions. The gap between repetitions reaches about 20% for high F (F = 35: 476.6 and 577.2 ms). In Fig. 1a the second repetition is slower in all 6 cases; I could not establish why, so I do not rely on differences smaller than that gap.
@@ -276,7 +299,9 @@ Median server time of the new code for every F (ms, mean of 2 runs): F = 5 to 25
 15. **Part 3: same configuration.** `p3a` was deployed with a script that I wrote to produce the same settings as `deploy_fixed.sh 1` (class B1, one fixed instance); I did not compare the generated file with the one of `fixed1` line by line.
 16. **Part 3: code path.** The equality of the answers was checked on 40 users of 4 datasets and on one user through the deployed version, not on every user. Each timing run queries a single user (`-u 1`).
 
-The verdict table, the full validity answers and the cost of the campaign will be written at the end.
+## 5. Cost of the campaign
+
+To be completed from the Billing page, which lags by up to a day: total cost and remaining credit at the start (about EUR 255.81 left of EUR 257.47 on 23 Nov 2026 before the Part 2 and Part 3 measurements, `logs/billing_notes.txt`) and at the end, and the running time of the instances (`logs/instance_hours.log`).
 
 ## Tools and AI assistance
 
