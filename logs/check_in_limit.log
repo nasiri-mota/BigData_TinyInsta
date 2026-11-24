@@ -1,2 +1,2 @@
-f25 valeurs IN = 26 -> OK, 20 posts
-f30 valeurs IN = 31 -> ERREUR BadRequest 400 IN supports up to 30 values. There are 31 values in the IN filter in your query. 3: IN supports up to 30 values. There are 31 values in the IN filter in you
+f25 IN values = 26 -> OK, 20 posts
+f30 IN values = 31 -> ERROR BadRequest 400 IN supports up to 30 values. There are 31 values in the IN filter in your query. 3: IN supports up to 30 values. There are 31 values in the IN filter in you

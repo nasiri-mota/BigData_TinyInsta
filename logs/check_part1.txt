@@ -1,4 +1,4 @@
-fichier, requetes, ok, echecs, instances, serveur_med_ms, client_med_ms, codes
+file, requests, ok, failures, instances, server_median_ms, client_median_ms, status_codes
 base_r1.csv, 1272, 1272, 0, 1, 22.0, 34.1, {'200': 1272}
 base_r2.csv, 1244, 1244, 0, 1, 22.4, 34.7, {'200': 1244}
 f05_r1.csv, 1338, 1338, 0, 1, 20.1, 32.2, {'200': 1338}

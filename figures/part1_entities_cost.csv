@@ -1,5 +1,5 @@
 case,F_followees,entities_read_per_timeline,cost_usd_per_million_timelines,price_usd_per_100k_reads
-U ou P varient (F=20),20,21,12.6,0.06
+U or P vary (F=20),20,21,12.6,0.06
 F=5,5,21,12.6,0.06
 F=10,10,21,12.6,0.06
 F=15,15,21,12.6,0.06

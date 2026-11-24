@@ -14,6 +14,6 @@ for path in sorted(glob.glob(f"{folder}/*.csv")):
     rows.append([os.path.basename(path), len(r), len(ok), len(r) - len(ok),
                  len(inst), round(statistics.median(srv), 1) if srv else "",
                  round(statistics.median(lat), 1) if lat else "", codes])
-print("fichier, requetes, ok, echecs, instances, serveur_med_ms, client_med_ms, codes")
+print("file, requests, ok, failures, instances, server_median_ms, client_median_ms, status_codes")
 for x in rows:
     print(*x, sep=", ")

@@ -10,6 +10,6 @@ for prefix in ("f25", "f30"):
     q.order = ["-created"]
     try:
         r = list(q.fetch(limit=20))
-        print(prefix, "valeurs IN =", len(authors), "-> OK,", len(r), "posts")
+        print(prefix, "IN values =", len(authors), "-> OK,", len(r), "posts")
     except Exception as e:
-        print(prefix, "valeurs IN =", len(authors), "-> ERREUR", type(e).__name__, str(e)[:160])
+        print(prefix, "IN values =", len(authors), "-> ERROR", type(e).__name__, str(e)[:160])
