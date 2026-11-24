@@ -4,11 +4,13 @@
 **Deployed application (default version):** https://tinyinsta-512819.ew.r.appspot.com
 **Repository:** https://github.com/nasiri-mota/BigData_TinyInsta
 
-**Status:** Part 1 is complete. Part 2 (capacity) is in progress and Part 3 (fix) has not started; their sections will be added after the measurements are done.
+**Status:** Parts 1 and 2 are complete. Part 3 (fix and re-measure) is in progress; its section, the verdict table, the full validity answers and the cost of the campaign will be added when it is done.
 
 ## Summary so far
 
 The time needed to build a timeline does not depend on the number of users (U) nor on the number of posts per user (P) in the ranges tested. It depends strongly on the number of followees (F): it is flat up to F = 29, jumps by a factor of about 18 at F = 30, then grows linearly at about 13 ms per followee. The cause was verified directly: Datastore rejects an `IN` filter with more than 30 values, and the application then falls back to one query per author.
+
+Part 2 gave a maximum throughput of about 24 requests per second for one instance, 44 for two and 102 for four: the capacity grows almost linearly with the number of instances (4.2 times for 4 instances, within a noise of about 10%). The limit of one instance is reached at a concurrency of 2: beyond it the throughput stays flat and the latency grows in proportion to the number of simultaneous users, which fits Little's law and is consistent with one request being processed at a time per instance (not verified directly).
 
 ## Repository structure
 
@@ -28,11 +30,11 @@ The instructor's tools print their messages in French; I did not modify them, so
 ## 1. Setup
 
 - **GCP project:** `tinyinsta-512819`. App Engine in region europe-west (URL ending `.ew.r.appspot.com`), runtime `python312`.
-- **Versions:** default version with autoscaling, class F1, at most 10 instances (`app.yaml`). `fixedN` versions: manual scaling, class B1, exactly N instances (`deploy_fixed.sh`).
+- **Versions:** default version with autoscaling, class F1, at most 10 instances (`app.yaml`). `fixedN` versions: manual scaling, class B1, exactly N instances (`deploy_fixed.sh`). `fixed1` was deployed from the repository as it was at the time (before `raw/` and `logs/` existed). `fixed2` and `fixed4` were deployed from a minimal copy containing only `main.py`, `requirements.txt` and `deploy_fixed.sh`, because a first attempt from the whole repository failed in Cloud Build (`Failed to download at least one file`; I do not know why, my guess is the number of files). The application code is identical in all three versions.
 - **Datastore:** Firestore in Datastore mode, location `eur3`. Entity reads cost 0.06 USD per 100,000 above the free 50,000 per day (pricing page, `eur3` selected).
 - **Software:** Flask 3.0.0, gunicorn 21.2.0, google-cloud-datastore 2.19.0 (server); Python 3.12, Locust 2.47.0, matplotlib 3.11.2 (client).
 - **Load generator location:** Cloud Shell, 2 cores (`nproc`).
-- **Dates:** data generated on 23 Nov 2026. Part 1 measured on 23 Nov 2026 from 23:33 UTC (about 40 minutes). Parts 2 and 3: to be completed.
+- **Dates:** data generated on 23 Nov 2026. Part 1 measured on 23 Nov 2026 from 23:33 UTC (about 40 minutes). Part 2 measured on 24 Nov 2026 (UTC): N = 1 from 01:24 to 01:46, N = 2 from 01:52 to 02:13, N = 4 from 02:16 to 02:36 (start and stop times of each version in `logs/instance_hours.log`). Part 3: to be completed.
 
 ### Datasets
 
@@ -124,13 +126,82 @@ Crossing F = 30 multiplies both the latency and the Datastore cost by about 30.
 - Saturation should then appear at very low concurrency (C = 1 or 2 for N = 1). Beyond it the throughput should stay flat while the latency grows with C (Little's law: latency ≈ C / throughput, about 1.5 to 2 s at C = 64 for N = 1).
 - For N = 2 and N = 4 the throughput should grow with N but by less than N times, as in my first guess: possible causes are uneven routing between instances, Datastore latency under load, and the load generator itself (Cloud Shell has 2 cores, Locust runs in one process). The client CPU is recorded during every run to test the last cause.
 
-Status: no Part 2 measurement has been made yet.
+### Results
+
+**Protocol.** Versions `fixed1`, `fixed2` and `fixed4` (N = 1, 2, 4 instances, manual scaling, class B1), dataset `base` (U = 1000, P = 20, F = 20), concurrency C in {1, 2, 4, 8, 16, 32, 64}: C simultaneous Locust users, each sending its next request as soon as it receives the previous answer. 75 s per run, 2 repetitions, C values run in random order, one 20 s warm-up discarded (`scripts/part2.sh`): 42 runs. One version was running at a time and was stopped after its measurements. Throughput is the number of HTTP 200 responses per second in the window from 5 s to 70 s of each run; latency is measured by the client and therefore includes about 12 to 14 ms of network. The analysis is in `scripts/plot_part2.py` and `scripts/part2_capacity.py`. Running time of the instances (`logs/instance_hours.log`): about 2.3 instance-hours in total for these measurements.
+
+**Fig. 2a** (throughput against C, one curve per N; dataset base)
+
+![Figure 2a](figures/fig2a.png)
+
+| C | N = 1 | N = 2 | N = 4 |
+|---|---|---|---|
+| 1 | 21.1 / 22.9 | 24.0 / 23.4 | 24.3 / 24.7 |
+| 2 | 22.9 / 24.6 | 36.1 / 34.2 | 46.4 / 46.6 |
+| 4 | 24.4 / 25.3 | 41.2 / 40.7 | 68.4 / 69.5 |
+| 8 | 24.3 / 23.3 | 42.2 / 42.3 | 80.6 / 77.9 |
+| 16 | 23.7 / 25.5 | 44.3 / 45.9 | 89.6 / 90.8 |
+| 32 | 22.5 / 25.1 | 45.1 / 44.8 | 101.6 / 102.6 |
+| 64 | 24.8 / 23.9 | 43.3 / 46.3 | 100.0 / 105.1 |
+
+(requests per second, run 1 / run 2)
+
+**Fig. 2b** (latency against C; solid line: measured median, dotted: measured mean, dashed: Little's law prediction, C divided by the measured throughput; log scales)
+
+![Figure 2b](figures/fig2b.png)
+
+| C | N = 1 | N = 2 | N = 4 |
+|---|---|---|---|
+| 1 | 41.5 / 39.6 | 39.3 / 39.7 | 39.3 / 38.3 |
+| 2 | 85.4 / 79.6 | 42.7 / 48.3 | 39.0 / 38.4 |
+| 4 | 159.7 / 154.4 | 90.7 / 91.2 | 45.3 / 45.2 |
+| 8 | 321.7 / 332.7 | 180.5 / 177.7 | 67.3 / 60.2 |
+| 16 | 649.2 / 621.4 | 339.9 / 338.9 | 123.3 / 136.4 |
+| 32 | 1314.0 / 1243.4 | 655.2 / 662.0 | 311.1 / 298.4 |
+| 64 | 2578.4 / 2667.1 | 1187.7 / 1303.8 | 502.1 / 454.3 |
+
+(median client latency in ms, run 1 / run 2)
+
+**Capacity** (`figures/part2_capacity.csv`). The saturated throughput of each N is the mean of the points that reach at least 90% of its peak (my definition: C from 2 on for N = 1, from 4 on for N = 2, C = 32 and 64 for N = 4).
+
+| N | Saturated throughput (req/s) | Per instance (req/s) | Speed-up vs N = 1 | Efficiency (speed-up / N) |
+|---|---|---|---|---|
+| 1 | 24.2 | 24.2 | 1.00 | 1.00 |
+| 2 | 43.6 | 21.8 | 1.80 | 0.90 |
+| 4 | 102.3 | 25.6 | 4.23 | 1.06 |
+
+**What the data show.**
+
+- With one instance the throughput reaches its limit at C = 2 and then stays flat around 24 requests per second up to C = 64. From C = 2 on, the latency is proportional to C (about 40 ms per user; 2.6 s at C = 64).
+- With two instances the limit is about 44 requests per second, reached from C = 4 to 8. With four instances it is about 102 requests per second, and it is reached late: at C = 8 only about 77% of it is obtained, at C = 16 about 88%.
+- With a single user (C = 1) the throughput and the latency (about 39 to 41 ms) are the same for N = 1, 2 and 4: extra instances only help when requests queue.
+- Going from 1 to 4 instances multiplies the saturated throughput by about 4.2, and from 1 to 2 by 1.8. The throughput per instance varies between 21.8 and 25.6 requests per second, which is about the size of the noise between the two repetitions (about 10%), so I cannot say whether the scaling is slightly below or slightly above linear.
+- The measured mean latency matches Little's law (C divided by the throughput) to within 0.3 to 0.5% (median over the runs; worst run 10%). The measured median does not: its median deviation from the prediction is 2.4% for N = 1, 6.8% for N = 2 and 21.5% for N = 4 (`figures/part2_little.csv`). The mean is above the median, so the latency distribution has a long tail, increasingly so with more instances. I did not investigate what causes this tail.
+
+**Check of the distribution of requests between instances** (N = 4, run 1, number of requests answered by each instance, `raw/part2/n4_c*_r1.csv`): C = 8: 1524, 1484, 1480, 1472; C = 16: 1699, 1682, 1648, 1563; C = 64: 2099, 1907, 1835, 1647. The totals over 75 s are close to each other (largest over smallest: 1.04, 1.09 and 1.27), so the routing is balanced overall. This does not show what happens at a given instant.
+
+**Interpretation.**
+
+- *Limit of one instance.* A throughput that does not grow with C and a latency proportional to C are what a server processing one request at a time produces: the extra users only wait in a queue. This is consistent with the application being started with `gunicorn -b :$PORT main:app` without any `--workers` or `--threads` option, if gunicorn's default is one synchronous worker (I did not check gunicorn's documentation nor the runtime configuration, so this stays a hypothesis).
+- *Unexplained part of the service time.* About 24 requests per second means that an instance is busy for about 41 ms per request, whereas `Server-Timing` reports about 22 ms spent in `get_timeline`. The difference of about 19 ms (Flask, JSON serialization, sending the answer, or the platform in front of the instance) was not measured, and I cannot say which part of it is the limiting resource.
+- *Why four instances saturate late.* With C users spread at random over 4 instances, an instance can be idle while another has a queue, so the total throughput is below the maximum until C is large compared with N. This is a plausible explanation that I did not test.
+- *The client was not the bottleneck.* The CPU of Cloud Shell (2 cores) stayed low: the mean busy time per run was at most 13.1% and the highest 5-second sample 35% (`figures/part2_checks.csv`, `logs/part2_cpu_*.log`).
+
+**Comparison with my hypotheses** (written before the measurements, see above):
+
+- Maximum throughput of one instance of about 10 requests per second: wrong, and already contradicted by Part 1. Revised estimate of 30 to 45 requests per second: too high, the measured value is about 24. The revised estimate was based on the 22 ms of server time, and missed the 19 ms discussed above.
+- Several simultaneous requests per instance (about 1000 in my first guess): not supported. The behaviour is that of one request at a time.
+- Saturation of one instance at C = 1 or 2: confirmed (C = 2).
+- Latency of about 1.5 to 2 s at C = 64 for N = 1: the measured value is about 2.6 s, because the throughput is lower than I assumed. Little's law itself is confirmed.
+- Throughput growing with N but by less than N times: not confirmed. The measured speed-ups are 1.8 for N = 2 and 4.2 for N = 4, within the noise of linear.
+- The load generator as a possible bottleneck: ruled out by the CPU measurements. Uneven routing and Datastore latency as other possible causes: not tested separately; the totals per instance are balanced, and no Datastore measurement was made.
+
 
 ### 2.3 Part 3 — Fix and re-measure
 
 Not started. Candidate bottlenecks so far: (a) the 30-value limit of `IN` in `get_timeline` (Part 1); (b) one request at a time per instance (Part 2 hypothesis). The choice will be made after Part 2.
 
-## 3. Validity notes so far (Part 1)
+## 3. Validity notes so far (Parts 1 and 2)
 
 1. **Instances that served the measurements.** Exactly 1 instance in all 52 runs (`logs/check_part1.txt`, column `instances`, computed from the `X-Instance` header).
 2. **Independence of runs.** Datasets were run in random order, with 2 repetitions. The gap between repetitions reaches about 20% for high F (F = 35: 476.6 and 577.2 ms). In Fig. 1a the second repetition is slower in all 6 cases; I could not establish why, so I do not rely on differences smaller than that gap.
@@ -138,7 +209,13 @@ Not started. Candidate bottlenecks so far: (a) the 30-value limit of `IN` in `ge
 4. **Failures.** 0 failures out of the 52 runs, only HTTP 200. A pilot run on the autoscaled version (`raw/pilot/test1.csv`) had 2 connection failures out of 924 requests, both at the very start of the run, most probably an instance still starting (not verified). Definition used: status other than 200, or a network error (status 0).
 5. **Code path.** `scripts/check_in_limit.py` proves that `IN` is rejected above 30 values. The fallback to one query per author is read from `main.py`, not measured. Each run queries a single user (`-u 1`), so the results describe that user's timeline, not an average over users.
 
-The verdict table, the full validity answers and the cost of the campaign will be written once Parts 2 and 3 are done.
+6. **Instances that served the Part 2 measurements.** In all 42 runs the number of distinct instances that answered was equal to N (1, 2 and 4; `figures/part2_checks.csv`, column `instances_serving`, from the `X-Instance` header). Before the measurements, `gcloud app instances list` showed 2 instances for `fixed2` and 4 for `fixed4`.
+7. **Failures in Part 2.** 138 failures out of 142,479 requests (0.10%): 37 of 24,865 for N = 1, 45 of 41,289 for N = 2 and 56 of 76,325 for N = 4. They are of two kinds only, both on the client side of the connection: `gaierror` (name resolution; 92 in total) and `ConnectionRefusedError` (46 in total). There was no HTTP error status. There was no failure for C = 1 or 2 in any version; failures start at C = 4 (N = 2 and 4) or C = 8 (N = 1). I do not know their cause. I did not remove them from the analysis; throughput counts only the HTTP 200 answers.
+8. **Independence of the Part 2 runs.** The C values were run in random order with 2 repetitions. The three versions were measured one after the other, in the order N = 1, 2, 4, within about 70 minutes, so an effect of the time of measurement cannot be separated from the effect of N. The throughput of a single user (C = 1) is about the same for the three versions (21 to 25 requests per second), which is some evidence against a drift during the session.
+9. **Difference with Part 1.** In Part 1, a single user obtained about 28 requests per second from `fixed1` on the same dataset and the same user (for example 1,272 requests in 45 s on `base`), whereas in Part 2 at C = 1 `fixed1` gave 21 to 23 per second a few hours later. I have no explanation. Absolute capacities should therefore be taken with an uncertainty of about 20%; the ratios between N, measured within the same hour, are in my opinion more reliable.
+10. **Client capacity.** The CPU of the load generator was low (see Part 2), which supports the assumption of the assignment that it is not a bottleneck.
+
+The verdict table, the full validity answers and the cost of the campaign will be written once Part 3 is done.
 
 ## Tools and AI assistance
 
