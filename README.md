@@ -36,7 +36,7 @@ The instructor's tools print their messages in French; I did not modify them, so
 - **Datastore:** Firestore in Datastore mode, location `eur3`. Entity reads cost 0.06 USD per 100,000 above the free 50,000 per day (pricing page, `eur3` selected).
 - **Software:** Flask 3.0.0, gunicorn 21.2.0, google-cloud-datastore 2.19.0 (server); Python 3.12, Locust 2.47.0, matplotlib 3.11.2 (client).
 - **Load generator location:** Cloud Shell, 2 cores (`nproc`).
-- **Dates:** data generated on 23 Nov 2026. Part 1 measured on 23 Nov 2026 from 23:33 UTC (about 40 minutes). Part 2 measured on 24 Nov 2026 (UTC): N = 1 from 01:24 to 01:46, N = 2 from 01:52 to 02:13, N = 4 from 02:16 to 02:36 (start and stop times of each version in `logs/instance_hours.log`). Part 3 on the night of 24 Nov 2026 (UTC; start and stop times of each version in `logs/instance_hours.log`).
+- **Dates:** data generated on 23 Nov 2026. Part 1 measured on 23 Nov 2026 from 23:33 UTC (about 40 minutes). Part 2 measured on 24 Nov 2026 (UTC): N = 1 from 01:24 to 01:46, N = 2 from 01:52 to 02:13, N = 4 from 02:16 to 02:36 (start and stop times of each version in `logs/instance_hours.log`). Part 3 on 24 Nov 2026 (UTC): `p3a` deployed at 03:06, all the measurements between 13:00 and 13:54 (start and stop times of each version in `logs/instance_hours.log`).
 
 ### Datasets
 
@@ -272,7 +272,7 @@ Median server time of the new code for every F (ms, mean of 2 runs): F = 5 to 25
 **Answers to the six questions.**
 
 1. *How many instances served each measurement?* Part 1: exactly 1 in all 52 runs. Part 2: 1, 2 and 4 in the 14 runs of each version (42 runs). Part 3: exactly 1 in all 52 runs. Counted as the number of distinct `X-Instance` values among the HTTP 200 answers (`logs/check_part1.txt`, `figures/part2_checks.csv`, `logs/part3_summary.txt`). Before the Part 2 runs, `gcloud app instances list` showed 2 instances for `fixed2` and 4 for `fixed4`.
-2. *Are the runs independent?* Within each version the datasets (Parts 1 and 3) or the concurrency levels (Part 2) were run in random order, with 2 repetitions. The versions were not interleaved: the three versions of Part 2 were measured one after the other within about 70 minutes, and in Part 3 the original code was measured before and after the new code. The measurements of the original code differ by about 8 to 11% inside the Part 3 session and by a factor of 1.35 to 1.8 between the Part 1 and the Part 3 sessions, without explanation. The second repetition is slower than the first in all the cases of Fig. 1a. I therefore compare values only inside one session, and treat differences below about 10% as noise.
+2. *Are the runs independent?* Within each version the datasets (Parts 1 and 3) or the concurrency levels (Part 2) were run in random order, with 2 repetitions. The versions were not interleaved: the three versions of Part 2 were measured one after the other within about 70 minutes, and in Part 3 the original code was measured before and after the new code. The measurements of the original code differ by about 8 to 11% inside the Part 3 session and by a factor of 1.35 to 1.8 between the Part 1 and the Part 3 sessions, without established explanation (Part 1 was run around 23:30 UTC and Part 3 around 13:00 UTC; I did not test whether the time of day plays a role). The second repetition is slower than the first in all the cases of Fig. 1a. I therefore compare values only inside one session, and treat differences below about 10% as noise.
 3. *What is the share of the network?* Part 1: client latency minus server time is 12 to 14 ms, about 37% of the latency for F up to 25 and about 1% at F = 100. In the Part 3 session the gap was about 30 ms at F = 20 and 13 to 22 ms for F from 30 to 100, for a reason I do not know. In Part 2 the latency includes the waiting time in the queue of the instance, so the network share was not computed separately.
 4. *What is counted as a failure?* An answer whose status is not 200, or a network error (status 0). Part 1: 0 out of the 52 runs (a pilot run on the autoscaled version had 2 failures out of 924 requests at its start). Part 2: 138 out of 142,479 requests (0.10%), only `gaierror` (92) and `ConnectionRefusedError` (46), none at C = 1 or 2, no HTTP error status. Part 3: 0. The causes of the failures of Part 2 are unknown.
 5. *Is the code path the one I think?* `scripts/check_in_limit.py` proves that `IN` is rejected above 30 values. The fallback to one query per author is read from `main.py`, not instrumented. The equality of the answers of the original and the new code was checked on 40 users of 4 datasets and on one user through the deployed version. The load generator records headers and status, not the content of the answers, so it cannot show that every answer was correct. Parts 1 and 3 query a single user per run (`-u 1`); Part 2 queries many users of `base` with F = 20, which stays on the single-query path.
@@ -293,15 +293,31 @@ Median server time of the new code for every F (ms, mean of 2 runs): F = 5 to 25
 10. **Client capacity.** The CPU of the load generator was low (see Part 2), which supports the assumption of the assignment that it is not a bottleneck.
 
 11. **Part 3: instances and failures.** In the 52 runs of Part 3 exactly one instance answered and there was no failure (`logs/part3_summary.txt`).
-12. **Part 3: drift inside the session.** The original code was measured before `p3a` and again after it, about an hour later: 691 then 636 ms at F = 30 (8% lower) and 2386 then 2116 ms at F = 100 (11% lower). I therefore report the gain against both, and consider an uncertainty of about 10% on it. I do not know the cause of this difference.
-13. **Part 3: difference with Part 1.** The original code was slower in the Part 3 session than in Part 1: about 1.35 times at F = 20, 1.7 times at F = 30 and 1.8 times at F = 60 and 100, with no explanation. Values of Part 1 and of Part 3 must therefore not be mixed; only the same-session values are compared.
+12. **Part 3: drift inside the session.** The original code was measured before `p3a` and again after it, about 45 minutes later: 691 then 636 ms at F = 30 (8% lower) and 2386 then 2116 ms at F = 100 (11% lower). I therefore report the gain against both, and consider an uncertainty of about 10% on it. I do not know the cause of this difference.
+13. **Part 3: difference with Part 1.** The original code was slower in the Part 3 session than in Part 1: about 1.35 times at F = 20, 1.7 times at F = 30 and 1.8 times at F = 60 and 100, with no established explanation; the two sessions took place at different times of day (around 23:30 UTC and around 13:00 UTC), which may play a role, and I did not test it. Values of Part 1 and of Part 3 must therefore not be mixed; only the same-session values are compared.
 14. **Part 3: order of the measurements.** The versions were not interleaved: original code (8 runs), then `p3a` (40 runs), then the original code again (4 runs). The two measurements of the original code surround those of `p3a`, which limits but does not remove an effect of the time of measurement.
 15. **Part 3: same configuration.** `p3a` was deployed with a script that I wrote to produce the same settings as `deploy_fixed.sh 1` (class B1, one fixed instance); I did not compare the generated file with the one of `fixed1` line by line.
 16. **Part 3: code path.** The equality of the answers was checked on 40 users of 4 datasets and on one user through the deployed version, not on every user. Each timing run queries a single user (`-u 1`).
 
 ## 5. Cost of the campaign
 
-To be completed from the Billing page, which lags by up to a day: total cost and remaining credit at the start (about EUR 255.81 left of EUR 257.47 on 23 Nov 2026 before the Part 2 and Part 3 measurements, `logs/billing_notes.txt`) and at the end, and the running time of the instances (`logs/instance_hours.log`).
+**Running time of the instances** (from `logs/instance_hours.log`; instance-hours = number of instances times the time between the end of the deployment or the start command and the stop command, all on 24 Nov 2026, UTC).
+
+| Part | Version | Instances | From | To | Instance-hours |
+|---|---|---|---|---|---|
+| 2 | `fixed1` | 1 | 01:24:18 | 01:46:00 | 0.36 |
+| 2 | `fixed2` | 2 | 01:52:52 | 02:12:59 | 0.67 |
+| 2 | `fixed4` | 4 | 02:16:23 | 02:35:44 | 1.29 |
+| 3 | `p3a`, first start | 1 | 03:06:54 | 03:07:37 | 0.01 |
+| 3 | `p3a` | 1 | 13:00:30 | 13:49:00 | 0.81 |
+| 3 | `fixed1`, before `p3a` | 1 | 13:02:59 | 13:12:08 | 0.15 |
+| 3 | `fixed1`, after `p3a` | 1 | 13:49:30 | 13:53:38 | 0.07 |
+
+Total logged: about 3.4 B1 instance-hours. Not logged: the Part 1 measurements on `fixed1` on 23 Nov (about 40 minutes of runs, so at least about 0.7 instance-hours) and the first deployment of `fixed1` the same day. The failed deployment of `fixed2` created no version and no instance.
+
+**Datastore operations** (rough estimates from the numbers of requests and entities, with the prices of the `eur3` pricing page: 0.06 USD per 100,000 reads, 0.18 per 100,000 writes, 0.02 per 100,000 deletes, before the free daily quota). Reads in Part 2: 142,341 answered requests times 21 entities, about 3.0 million reads, about 1.8 USD. Writes: at least the 394,800 entities of the final datasets, about 0.7 USD, to which the writes of the datasets that failed and were deleted must be added. Deletes: about 140,000 documents, about 0.03 USD. I did not estimate the reads of Parts 1 and 3.
+
+**Billing page.** On 24 Nov 2026 at about 13:00 UTC (`logs/billing_notes.txt`): EUR 3.82 for the current month with the credits excluded, and about EUR 254 left of the EUR 257 welcome credit (value rounded by the page); on 23 Nov, EUR 255.81 were left of EUR 257.47. The figure at the end of the campaign, read once the report is up to date, is still to be added here.
 
 ## Tools and AI assistance
 
