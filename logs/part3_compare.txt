@@ -1,0 +1,10 @@
+/home/nasiri_m95/tinyinsta-2026/main.py:62: UserWarning: Detected filter using positional arguments. Prefer using the 'filter' keyword argument instead.
+  query.add_filter('author', 'IN', follows)
+/home/nasiri_m95/tinyinsta-2026/part3/main.py:59: UserWarning: Detected filter using positional arguments. Prefer using the 'filter' keyword argument instead.
+  query.add_filter('author', 'IN', group)
+/home/nasiri_m95/tinyinsta-2026/main.py:69: UserWarning: Detected filter using positional arguments. Prefer using the 'filter' keyword argument instead.
+  q.add_filter('author', '=', author)
+f25: users=10 identical=10 tie_only=0 different=0 old~76 ms new~74 ms (single runs, indicative)
+f30: users=10 identical=10 tie_only=0 different=0 old~552 ms new~48 ms (single runs, indicative)
+f60: users=10 identical=10 tie_only=0 different=0 old~893 ms new~59 ms (single runs, indicative)
+f100: users=10 identical=10 tie_only=0 different=0 old~1507 ms new~81 ms (single runs, indicative)

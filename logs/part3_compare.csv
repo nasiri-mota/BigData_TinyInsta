@@ -1,0 +1,5 @@
+dataset,users_compared,identical,tie_only,different,old_mean_ms_indicative,new_mean_ms_indicative
+f25,10,10,0,0,76,74
+f30,10,10,0,0,552,48
+f60,10,10,0,0,893,59
+f100,10,10,0,0,1507,81
