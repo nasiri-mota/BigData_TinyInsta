@@ -111,10 +111,18 @@ Crossing F = 30 multiplies both the latency and the Datastore cost by about 30.
 
 **Hypotheses (written on 24 Nov 2026, before any Part 2 measurement).**
 
-- `app.yaml` starts the application with `gunicorn -b :$PORT main:app`, with no `--workers` or `--threads` option. I expect gunicorn's defaults to apply, that is one synchronous worker, so **one request is processed at a time per instance**. This is to be checked against the data.
-- Part 1 gives about 22 ms of server time per request. With framework and serialization overhead I expect a service time of about 22 to 33 ms, hence a maximum throughput of **about 30 to 45 requests per second per instance**.
-- With one worker per instance, the saturation point should be reached at very low concurrency (C = 1 or 2 for N = 1). Beyond saturation the throughput should stay flat and the latency should grow with C (Little's law: latency ≈ C / throughput, so about 1.5 to 2 s at C = 64 for N = 1).
-- For N = 2 and N = 4 I expect a maximum throughput roughly proportional to N, possibly lower for three reasons: uneven routing between instances, Datastore latency under load, and the load generator itself (Cloud Shell has 2 cores and Locust runs in one process). The CPU of the client is recorded during every run to test the last reason.
+*My initial guesses.* They were made without computing anything from the Part 1 numbers:
+
+- an instance can probably handle a large number of requests at the same time (my guess: on the order of 1000);
+- its maximum throughput would be about 10 requests per second;
+- going from 1 to 2 to 4 instances should multiply the throughput by less than 2 and 4, because several factors interact when the load grows and a linear response is unlikely.
+
+*Check against Part 1, still before Part 2.* In Part 1, one user sending requests one after the other (`-u 1`) already obtained about 28 requests per second from one instance (for example 1,245 requests in 45 s on `u10000`). So a maximum of 10 requests per second per instance cannot be right, and I revise it:
+
+- `app.yaml` starts the application with `gunicorn -b :$PORT main:app`, with no `--workers` or `--threads` option. I expect gunicorn's defaults to apply, that is one synchronous worker: **one request processed at a time per instance**. This is to be checked against the data, and contradicts my first guess of about 1000 simultaneous requests.
+- With about 34 ms per request seen by the client (22 ms on the server), one instance should serve **about 30 to 45 requests per second** at most.
+- Saturation should then appear at very low concurrency (C = 1 or 2 for N = 1). Beyond it the throughput should stay flat while the latency grows with C (Little's law: latency ≈ C / throughput, about 1.5 to 2 s at C = 64 for N = 1).
+- For N = 2 and N = 4 the throughput should grow with N but by less than N times, as in my first guess: possible causes are uneven routing between instances, Datastore latency under load, and the load generator itself (Cloud Shell has 2 cores, Locust runs in one process). The client CPU is recorded during every run to test the last cause.
 
 Status: no Part 2 measurement has been made yet.
 
