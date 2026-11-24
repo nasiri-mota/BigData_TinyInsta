@@ -4,13 +4,15 @@
 **Deployed application (default version):** https://tinyinsta-512819.ew.r.appspot.com
 **Repository:** https://github.com/nasiri-mota/BigData_TinyInsta
 
-**Status:** Parts 1 and 2 are complete. Part 3 (fix and re-measure) is in progress; its section, the verdict table, the full validity answers and the cost of the campaign will be added when it is done.
+**Status:** Parts 1, 2 and 3 are complete. The verdict table, the full validity answers and the cost of the campaign are still to be written.
 
 ## Summary so far
 
 The time needed to build a timeline does not depend on the number of users (U) nor on the number of posts per user (P) in the ranges tested. It depends strongly on the number of followees (F): it is flat up to F = 29, jumps by a factor of about 18 at F = 30, then grows linearly at about 13 ms per followee. The cause was verified directly: Datastore rejects an `IN` filter with more than 30 values, and the application then falls back to one query per author.
 
 Part 2 gave a maximum throughput of about 24 requests per second for one instance, 44 for two and 102 for four: the capacity grows almost linearly with the number of instances (4.2 times for 4 instances, within a noise of about 10%). The limit of one instance is reached at a concurrency of 2: beyond it the throughput stays flat and the latency grows in proportion to the number of simultaneous users, which fits Little's law and is consistent with one request being processed at a time per instance (not verified directly).
+
+Part 3 replaced the one-query-per-author fallback by queries on groups of at most 30 authors. For F = 100 the median server time of a timeline fell from about 2.1 to 2.4 s to about 0.11 s (19 to 22 times faster, measured in the same session), with identical answers; for F up to 29 nothing changes.
 
 ## Repository structure
 
@@ -30,11 +32,11 @@ The instructor's tools print their messages in French; I did not modify them, so
 ## 1. Setup
 
 - **GCP project:** `tinyinsta-512819`. App Engine in region europe-west (URL ending `.ew.r.appspot.com`), runtime `python312`.
-- **Versions:** default version with autoscaling, class F1, at most 10 instances (`app.yaml`). `fixedN` versions: manual scaling, class B1, exactly N instances (`deploy_fixed.sh`). `fixed1` was deployed from the repository as it was at the time (before `raw/` and `logs/` existed). `fixed2` and `fixed4` were deployed from a minimal copy containing only `main.py`, `requirements.txt` and `deploy_fixed.sh`, because a first attempt from the whole repository failed in Cloud Build (`Failed to download at least one file`; I do not know why, my guess is the number of files). The application code is identical in all three versions.
+- **Versions:** default version with autoscaling, class F1, at most 10 instances (`app.yaml`). `fixedN` versions: manual scaling, class B1, exactly N instances (`deploy_fixed.sh`). `fixed1` was deployed from the repository as it was at the time (before `raw/` and `logs/` existed). `fixed2` and `fixed4` were deployed from a minimal copy containing only `main.py`, `requirements.txt` and `deploy_fixed.sh`, because a first attempt from the whole repository failed in Cloud Build (`Failed to download at least one file`; I do not know why, my guess is the number of files). The application code is identical in all three versions. `p3a` (Part 3) was deployed with `scripts/deploy_p3.sh`, which writes the same settings as `deploy_fixed.sh 1` (class B1, one fixed instance) and uses `part3/main.py`, from a minimal copy and with `--no-promote`.
 - **Datastore:** Firestore in Datastore mode, location `eur3`. Entity reads cost 0.06 USD per 100,000 above the free 50,000 per day (pricing page, `eur3` selected).
 - **Software:** Flask 3.0.0, gunicorn 21.2.0, google-cloud-datastore 2.19.0 (server); Python 3.12, Locust 2.47.0, matplotlib 3.11.2 (client).
 - **Load generator location:** Cloud Shell, 2 cores (`nproc`).
-- **Dates:** data generated on 23 Nov 2026. Part 1 measured on 23 Nov 2026 from 23:33 UTC (about 40 minutes). Part 2 measured on 24 Nov 2026 (UTC): N = 1 from 01:24 to 01:46, N = 2 from 01:52 to 02:13, N = 4 from 02:16 to 02:36 (start and stop times of each version in `logs/instance_hours.log`). Part 3: to be completed.
+- **Dates:** data generated on 23 Nov 2026. Part 1 measured on 23 Nov 2026 from 23:33 UTC (about 40 minutes). Part 2 measured on 24 Nov 2026 (UTC): N = 1 from 01:24 to 01:46, N = 2 from 01:52 to 02:13, N = 4 from 02:16 to 02:36 (start and stop times of each version in `logs/instance_hours.log`). Part 3 on the night of 24 Nov 2026 (UTC; start and stop times of each version in `logs/instance_hours.log`).
 
 ### Datasets
 
@@ -214,9 +216,46 @@ Crossing F = 30 multiplies both the latency and the Datastore cost by about 30.
 
 **Measurement protocol (same as Part 1 for the F series).** One fixed instance, one request at a time, the 20 datasets `f05` to `f100`, 45 s per run, 2 repetitions in random order, one warm-up discarded. The "before" values are the Part 1 measurements. Because Part 2 showed differences of about 20% between sessions, I will also re-measure the original version `fixed1` for F = 20, 30, 60 and 100 in the same session as the new version, and report both.
 
-Status: nothing has been written, deployed or measured for Part 3 yet.
+**Measurements.** Version `p3a` (new code, class B1, 1 fixed instance), one request at a time (`-u 1`), the 20 datasets `f05` to `f100`, 45 s per run, 2 repetitions in random order, one 20 s warm-up discarded (`scripts/part3.sh`): 40 runs. The original code (`fixed1`) was measured in the same session, before `p3a` for F = 20, 30, 60 and 100 (8 runs) and again after `p3a` for F = 30 and 100 (4 runs): 52 runs in total. In all of them one instance answered and there was no failure (last line of `logs/part3_summary.txt`). The figures and tables are produced by `scripts/plot_part3.py`.
 
-## 3. Validity notes so far (Parts 1 and 2)
+**Check that the answers are the same.** Before deployment, `scripts/part3_compare.py` ran the old and the new function on Datastore for the first 10 users of `f25`, `f30`, `f60` and `f100`: the 40 lists of posts were identical (`logs/part3_compare.txt`). After deployment, the timeline of `f100_u00000` returned by `p3a` was identical to the one returned by the default version (original code).
+
+**Fig. 3** (left: median server time against F for the original code and the new code; right: the new code only, dotted lines at F = 30, 60 and 90; U = 120, P = 20, one request at a time)
+
+![Figure 3](figures/fig3.png)
+
+| F | Original code, before `p3a` | Original code, after `p3a` | New code (`p3a`) | Speed-up (before / after) | Part 1, previous night |
+|---|---|---|---|---|---|
+| 20 | 31.2 | not measured | 28.1 | 1.1 / - | 23.1 |
+| 30 | 691.3 | 635.9 | 67.0 | 10.3 / 9.5 | 410.4 |
+| 60 | 1423.8 | not measured | 87.5 | 16.3 / - | 793.2 |
+| 100 | 2386.2 | 2115.7 | 110.0 | 21.7 / 19.2 | 1328.0 |
+
+(median server time in ms, mean of the 2 runs; speed-up = original code divided by new code)
+
+Median server time of the new code for every F (ms, mean of 2 runs): F = 5 to 25: 27.4, 26.6, 30.3, 28.1, 29.9; F = 30 to 55: 67.0, 68.8, 65.4, 69.7, 70.0, 67.7; F = 60 to 85: 87.5, 90.4, 87.5, 88.5, 90.5, 89.2; F = 90 to 100: 115.8, 105.8, 110.0 (`figures/part3_summary.csv`, `figures/fig3.csv`).
+
+**What the data show.**
+
+- With the new code the curve is a staircase with four plateaus: about 28 ms (F up to 25), about 68 ms (F = 30 to 55), about 89 ms (F = 60 to 85) and about 110 ms (F = 90 to 100). Each step lies between two measured values of F (25 and 30, 55 and 60, 85 and 90); F = 26 to 29 and the other intermediate values were not measured, so the exact position of the steps is only known to that precision.
+- The first step is about 40 ms high; the next two are about 21 ms each.
+- For F up to 29 there is no measurable change: 28.1 ms with the new code against 31.2 ms with the original code at F = 20, a difference smaller than the difference of about 8 to 11% between two measurements of the original code in the same session.
+- For F = 30, 60 and 100 the new code is about 10, 16 and 19 to 22 times faster than the original code measured in the same session. The original code goes from 691 to 2386 ms between F = 30 and F = 100, while the new code goes from 67 to 110 ms.
+
+**Interpretation.** The original code issued one query per author as soon as there were more than 30 authors (Part 1). With groups of at most 30 authors, the number of queries is the number of groups, that is the ceiling of (F + 1) / 30: 1 for F up to 29, 2 for F = 30 to 59, 3 for F = 60 to 89 and 4 for F = 90 to 100. This is what the plateaus show: each new group adds one sequential query, which cost about 21 ms in the second and third steps (one extra group containing a single author each time at F = 60 and F = 90). I do not know why the first step (F = 30) is twice as high, since its second group also contains a single author. I did not investigate it and I do not want to guess.
+
+**Comparison with my hypotheses** (written before any code or measurement, see above):
+
+- No change for F up to 29: confirmed. The absolute value I expected (20 to 25 ms) was too low: 27 to 30 ms were measured, in a session where the original code was also slower than in Part 1 (31 ms against 23 ms at F = 20).
+- About 70 to 100 ms at F = 100: measured 110 ms, a little above my range. About 15 times faster: measured 19 to 22 times against the original code in the same session, and about 12 times against the Part 1 measurement of the previous night (1328 ms). The gain depends on which measurement of the original code is used; I report the same-session one.
+- A staircase with steps at F = 30, 60 and 90: confirmed qualitatively (see above for the precision). The step height of 15 to 20 ms was right for two steps out of three and about half of the first step.
+- The cost of one query with 30 values (the biggest uncertainty I had named) was not measured separately; the steps suggest about 21 ms per extra group.
+- Same answers: confirmed on 40 users of 4 datasets and on one user through the deployed version. I did not observe any difference in the order of posts created in the same second.
+- Entities read and cost: not measured, this remains the calculation of the hypotheses (41 and 81 entities, about 24.6 and 48.6 USD per million timelines at F = 30 and F = 100, instead of 621 and 2021, and 372.6 and 1,212.6 USD).
+
+**Cost and limits of the fix.** The change is about 15 lines in one function (`part3/main.py`); there is no change in the data, the index or the dependencies. The queries are still run one after the other, so the time still grows with the number of groups, by about 21 ms for each additional group of 30 authors (this is an extrapolation beyond F = 100, not a measurement). Two things I did not try: running the group queries in parallel, and storing a precomputed timeline for each user, which would move the cost to the writes. The capacity of Part 2 was not measured again with the new code, and the second candidate bottleneck (one request at a time per instance) was not tried. Each measurement concerns one user (`-u 1`, the user `f<F>_u00000`).
+
+## 3. Validity notes so far (Parts 1, 2 and 3)
 
 1. **Instances that served the measurements.** Exactly 1 instance in all 52 runs (`logs/check_part1.txt`, column `instances`, computed from the `X-Instance` header).
 2. **Independence of runs.** Datasets were run in random order, with 2 repetitions. The gap between repetitions reaches about 20% for high F (F = 35: 476.6 and 577.2 ms). In Fig. 1a the second repetition is slower in all 6 cases; I could not establish why, so I do not rely on differences smaller than that gap.
@@ -230,7 +269,14 @@ Status: nothing has been written, deployed or measured for Part 3 yet.
 9. **Difference with Part 1.** In Part 1, a single user obtained about 28 requests per second from `fixed1` on the same dataset and the same user (for example 1,272 requests in 45 s on `base`), whereas in Part 2 at C = 1 `fixed1` gave 21 to 23 per second a few hours later. I have no explanation. Absolute capacities should therefore be taken with an uncertainty of about 20%; the ratios between N, measured within the same hour, are in my opinion more reliable.
 10. **Client capacity.** The CPU of the load generator was low (see Part 2), which supports the assumption of the assignment that it is not a bottleneck.
 
-The verdict table, the full validity answers and the cost of the campaign will be written once Part 3 is done.
+11. **Part 3: instances and failures.** In the 52 runs of Part 3 exactly one instance answered and there was no failure (`logs/part3_summary.txt`).
+12. **Part 3: drift inside the session.** The original code was measured before `p3a` and again after it, about an hour later: 691 then 636 ms at F = 30 (8% lower) and 2386 then 2116 ms at F = 100 (11% lower). I therefore report the gain against both, and consider an uncertainty of about 10% on it. I do not know the cause of this difference.
+13. **Part 3: difference with Part 1.** The original code was slower in the Part 3 session than in Part 1: about 1.35 times at F = 20, 1.7 times at F = 30 and 1.8 times at F = 60 and 100, with no explanation. Values of Part 1 and of Part 3 must therefore not be mixed; only the same-session values are compared.
+14. **Part 3: order of the measurements.** The versions were not interleaved: original code (8 runs), then `p3a` (40 runs), then the original code again (4 runs). The two measurements of the original code surround those of `p3a`, which limits but does not remove an effect of the time of measurement.
+15. **Part 3: same configuration.** `p3a` was deployed with a script that I wrote to produce the same settings as `deploy_fixed.sh 1` (class B1, one fixed instance); I did not compare the generated file with the one of `fixed1` line by line.
+16. **Part 3: code path.** The equality of the answers was checked on 40 users of 4 datasets and on one user through the deployed version, not on every user. Each timing run queries a single user (`-u 1`).
+
+The verdict table, the full validity answers and the cost of the campaign will be written at the end.
 
 ## Tools and AI assistance
 
