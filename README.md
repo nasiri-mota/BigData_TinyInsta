@@ -275,6 +275,8 @@ This experiment is not required by the assignment, which asks for one bottleneck
 
 **Measurement protocol.** Same as Part 2 for N = 1: C in {1, 2, 4, 8, 16, 32, 64}, 75 s per run, 2 repetitions in random order, one 20 s warm-up discarded, dataset `base`, with the same checks (instances that answered, CPU of the client). The original version `fixed1` is measured in the same session, before `p3b` (the 14 runs) and again after it (C = 8 and C = 64, 4 runs).
 
+**Attempt 1 (disturbed).** What follows, up to the heading of attempt 2, describes the first run of this experiment, with its problems.
+
 **Verification of the start command.** The start logs (`logs/extra_p3b_startup.txt`, `logs/extra_fixed1_startup.txt`) show gunicorn 21.2.0 with `Using worker: gthread` for `p3b` and `Using worker: sync`, with a single worker, for `fixed1`: `p3b` really runs with threads and `fixed1` with one synchronous worker.
 
 **Measurements.** Same protocol as Part 2 for N = 1 (`scripts/part2_extra.sh`, raw logs in `raw/extra/`): 14 runs of `fixed1` (from about 15:23 UTC), 14 runs of `p3b` (from 15:43) and 4 runs of `fixed1` after `p3b` (C = 8 and 64, 2 repetitions); the first repetition of the last 4 runs was made at about 16:01 and the second at about 16:23, because the Cloud Shell session was disconnected in between. 32 runs in total. The analysis is in `scripts/plot_extra.py` (`figures/fig_extra.csv`, `figures/extra_summary.csv`).
@@ -322,6 +324,14 @@ The saturated throughput is defined as in Part 2 (mean of the points that reach 
 **Interpretation.** The limit of about 24 to 28 requests per second of one instance is not the number of gunicorn workers or threads: with 4 threads the capacity did not increase. The single synchronous worker explains why requests wait in a queue before `get_timeline` starts (Part 2), but giving the instance threads did not make it process requests in parallel. Two explanations fit this and I tested neither: the work of a request is limited by the CPU of a class B1 instance (a slow CPU, on which threads only add switching overhead), or the platform delivers the requests to an instance one at a time. A larger instance class or a measure of the CPU of the instance would separate them. The extra experiment therefore refines the explanation of the capacity of Part 2 (see 2.2); the fix of Part 3 is not affected.
 
 **Limits.** One instance, one value of the number of threads (4), no variation of the number of workers, no other instance class; three disturbed runs; and the two measurements of `fixed1`, 45 minutes apart, differ by about 12%.
+
+##### Attempt 2: alternating measurements
+
+**Why a second attempt.** The first attempt had protocol problems, not a result I disliked: the original start command drifted by about 12% between its two measurements, so the size of the loss of `p3b` could not be given; three runs of `fixed1` were disturbed by HTTP 500 bursts; and the Cloud Shell session was disconnected during the last runs. The result of attempt 1 (no gain with threads) is kept and reported above, whatever attempt 2 shows.
+
+**Design (decided on 24 Nov 2026 after seeing attempt 1, before attempt 2 gave any result).** `fixed1` and `p3b` run at the same time. For each repetition and each C (in random order), the two versions are measured one after the other, in a random order, so that a drift of the platform affects both of them; the comparison is made on the ratio between the two members of each pair. The rest of the protocol is unchanged: 75 s per run, 2 repetitions, dataset `base`, warm-up discarded, the same checks of instances and client CPU. A run is called disturbed if more than one instance answered or if more than 100 requests failed. The whole experiment is one command (`scripts/extra2_all.sh`, started with `nohup`) which also stops both versions at the end. The hypotheses above are unchanged. The start logs of attempt 2 (`logs/extra2_fixed1_startup.txt`, `logs/extra2_p3b_startup.txt`) again show `Using worker: sync` for `fixed1` and `Using worker: gthread` for `p3b`. The measurements started at 16:51 UTC.
+
+Status: the results of attempt 2 are being measured.
 
 ## 3. Verdicts
 
