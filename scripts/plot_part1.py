@@ -1,6 +1,6 @@
-"""Part 1 : figures 1a et 1b a partir de raw/part1/*.csv (fixed1, -u 1).
+"""Part 1: figures 1a and 1b from raw/part1/*.csv (fixed1, -u 1).
 Usage : python scripts/plot_part1.py
-Produit figures/fig1a.csv/.png et figures/fig1b.csv/.png
+Produces figures/fig1a.csv/.png and figures/fig1b.csv/.png
 """
 import csv, glob, os, statistics
 import matplotlib
@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 RAW, OUT = "raw/part1", "figures"
 os.makedirs(OUT, exist_ok=True)
 
-# prefixe -> (U, P, F)
+# prefix -> (U, P, F)
 PARAMS = {"u100": (100, 20, 20), "base": (1000, 20, 20), "u10000": (10000, 20, 20),
           "p10": (100, 10, 20), "p100": (100, 100, 20), "p1000": (100, 1000, 20)}
 for f in range(5, 101, 5):
@@ -27,7 +27,7 @@ def stats(path):
                 server_median_ms=statistics.median(srv) if srv else float("nan"),
                 client_median_ms=statistics.median(lat) if lat else float("nan"))
 
-data = {}  # prefixe -> {rep: stats}
+data = {}  # prefix -> {rep: stats}
 for path in sorted(glob.glob(f"{RAW}/*_r*.csv")):
     name = os.path.basename(path)[:-4]
     prefix, rep = name.rsplit("_r", 1)
@@ -42,7 +42,7 @@ def mean_over_reps(prefix, key):
     v = [s[key] for s in data.get(prefix, {}).values()]
     return statistics.mean(v) if v else float("nan")
 
-# ---------- Fig 1a : facteurs U et P ----------
+# ---------- Fig 1a: factors U and P ----------
 hdr = ["factor", "dataset", "U_users", "P_posts_per_user", "F_followees", "rep",
        "n_requests", "n_instances", "server_median_ms", "client_median_ms"]
 lines = []
@@ -61,15 +61,15 @@ for a, factor, sets, idx, fixed in ((ax[0], "U", ["u100", "base", "u10000"], 0, 
     for rep in (1, 2):
         ys = [data.get(p, {}).get(rep, {}).get("server_median_ms", float("nan")) for p in sets]
         a.plot(xs, ys, "o", alpha=0.6, label=f"run {rep}")
-    a.plot(xs, [mean_over_reps(p, "server_median_ms") for p in sets], "-", color="gray", label="moyenne")
-    a.set_xscale("log"); a.set_yscale("log")
-    a.set_xlabel(f"{factor} ({'utilisateurs' if factor == 'U' else 'posts par utilisateur'})")
-    a.set_ylabel("temps serveur médian (ms)")
-    a.set_title(f"Facteur {factor} — fixes : {fixed}\nfixed1, 1 requête à la fois")
+    a.plot(xs, [mean_over_reps(p, "server_median_ms") for p in sets], "-", color="gray", label="mean")
+    a.set_xscale("log"); a.set_ylim(bottom=0)
+    a.set_xlabel(f"{factor} ({'users' if factor == 'U' else 'posts per user'})")
+    a.set_ylabel("median server time (ms)")
+    a.set_title(f"Factor {factor} — fixed: {fixed}\nfixed1, one request at a time")
     a.legend()
 fig.tight_layout(); fig.savefig(f"{OUT}/fig1a.png", dpi=150); plt.close(fig)
 
-# ---------- Fig 1b : facteur F ----------
+# ---------- Fig 1b: factor F ----------
 fsets = [f"f{f:02d}" for f in range(5, 101, 5)]
 lines = []
 for p in fsets:
@@ -84,10 +84,10 @@ write_csv(f"{OUT}/fig1b.csv",
 
 fig, a = plt.subplots(figsize=(6.5, 4.2))
 xs = [PARAMS[p][2] for p in fsets]
-a.plot(xs, [mean_over_reps(p, "server_median_ms") for p in fsets], "o-", label="serveur (Server-Timing)")
+a.plot(xs, [mean_over_reps(p, "server_median_ms") for p in fsets], "o-", label="server (Server-Timing)")
 a.plot(xs, [mean_over_reps(p, "client_median_ms") for p in fsets], "s--", label="client (Locust)")
-a.set_xlabel("F (comptes suivis par utilisateur)"); a.set_ylabel("médiane (ms), moyenne des runs")
-a.set_title("Facteur F — fixes : U=120, P=20\nfixed1, 1 requête à la fois")
+a.set_xlabel("F (followees per user)"); a.set_ylabel("median (ms), mean of runs")
+a.set_title("Factor F — fixed: U=120, P=20\nfixed1, one request at a time")
 a.legend(); a.grid(alpha=0.3)
 fig.tight_layout(); fig.savefig(f"{OUT}/fig1b.png", dpi=150); plt.close(fig)
 print("OK :", sorted(data), "->", OUT)
