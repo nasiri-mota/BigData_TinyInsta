@@ -99,10 +99,11 @@ for i, N in enumerate(Ns):
     xs = [C for C in Cs if (N, C, 1) in data or (N, C, 2) in data]
     col = f"C{i}"
     a.plot(xs, [mean_rep(N, C, "latency_median_ms") for C in xs], "o-", color=col, label=f"N = {N}: measured median")
+    a.plot(xs, [mean_rep(N, C, "latency_mean_ms") for C in xs], "s:", color=col, label=f"N = {N}: measured mean")
     a.plot(xs, [1000.0 * C / mean_rep(N, C, "throughput_rps") for C in xs], "--", color=col, label=f"N = {N}: Little, C / throughput")
 a.set_xscale("log", base=2); a.set_yscale("log")
 a.set_xlabel("C (simultaneous Locust users)"); a.set_ylabel("latency (ms, log scale)")
-a.set_title("Median latency vs concurrency — fixedN, dataset base")
+a.set_title("Latency vs concurrency — fixedN, dataset base")
 a.legend(fontsize=8); a.grid(alpha=0.3, which="both")
 fig.tight_layout(); fig.savefig(f"{OUT}/fig2b.png", dpi=150); plt.close(fig)
 
