@@ -1,0 +1,8 @@
+f25 original posts returned=20  queries attempted=1    failed=0 entities read=21
+f25 new      posts returned=20  queries attempted=1    failed=0 entities read=21
+f30 original posts returned=20  queries attempted=32   failed=1 entities read=621
+f30 new      posts returned=20  queries attempted=2    failed=0 entities read=41
+f60 original posts returned=20  queries attempted=62   failed=1 entities read=1221
+f60 new      posts returned=20  queries attempted=3    failed=0 entities read=61
+f100 original posts returned=20  queries attempted=102  failed=1 entities read=2021
+f100 new      posts returned=20  queries attempted=4    failed=0 entities read=81

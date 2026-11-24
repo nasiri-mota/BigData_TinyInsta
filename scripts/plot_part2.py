@@ -103,7 +103,7 @@ for i, N in enumerate(Ns):
     a.plot(xs, [1000.0 * C / mean_rep(N, C, "throughput_rps") for C in xs], "--", color=col, label=f"N = {N}: Little, C / throughput")
 a.set_xscale("log", base=2); a.set_yscale("log")
 a.set_xlabel("C (simultaneous Locust users)"); a.set_ylabel("latency (ms, log scale)")
-a.set_title("Latency vs concurrency — fixedN, dataset base")
+a.set_title("Latency vs concurrency — fixedN\ndataset base (U=1000, P=20, F=20)")
 a.legend(fontsize=8); a.grid(alpha=0.3, which="both")
 fig.tight_layout(); fig.savefig(f"{OUT}/fig2b.png", dpi=150); plt.close(fig)
 

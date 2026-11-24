@@ -89,7 +89,7 @@ for rep, mk in ((1, "."), (2, "x")):
 for x in (30, 60, 90):
     b.axvline(x, color="k", linestyle=":", alpha=0.4)
 b.set_ylim(bottom=0); b.set_xlabel("F (followees per user)"); b.set_ylabel("median server time (ms)")
-b.set_title("New code only (dotted lines: F = 30, 60, 90)"); b.legend(fontsize=8); b.grid(alpha=0.3)
+b.set_title("New code only — U = 120, P = 20\n(dotted lines: F = 30, 60, 90)"); b.legend(fontsize=8); b.grid(alpha=0.3)
 fig.tight_layout(); fig.savefig(f"{OUT}/fig3.png", dpi=150); plt.close(fig)
 
 print("F    fixed1_before  fixed1_after  p3a(ms)  speedup_b  speedup_a  part1(ms)")

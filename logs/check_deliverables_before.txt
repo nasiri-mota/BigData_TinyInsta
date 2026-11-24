@@ -1,0 +1,67 @@
+== Files
+OK       README.md
+OK       figures/fig1a.png
+OK       figures/fig1a.csv
+OK       figures/fig1b.png
+OK       figures/fig1b.csv
+OK       figures/fig2a.png
+OK       figures/fig2a.csv
+OK       figures/fig2b.png
+OK       figures/fig2b.csv
+OK       figures/fig3.png
+OK       figures/fig3.csv
+OK       raw/part1/ raw logs  [52 files, expected 52]
+OK       raw/part2/ raw logs  [42 files, expected 42]
+OK       raw/part3/ raw logs  [52 files, expected 52]
+MISSING  one command that regenerates all the figures (Makefile or scripts/make_all.sh)
+OK       part3/main.py (modified code kept apart from the instructor's main.py)
+
+== README sections imposed by the assignment
+OK       1. Setup
+OK       2. Results
+OK       3. Verdicts
+OK       4. Validity
+OK       5. Cost
+OK       Results: Part 1
+OK       Results: Part 2
+OK       Results: Part 3
+OK       hypothesis, Part 1
+OK       hypothesis, Part 2
+OK       hypothesis, Part 3
+OK       fig1a.png displayed in the README
+OK       fig1b.png displayed in the README
+OK       fig2a.png displayed in the README
+OK       fig2b.png displayed in the README
+OK       fig3.png displayed in the README
+OK       verdict table row Users (U)
+OK       verdict table row Posts per user (P)
+OK       verdict table row Followees (F)
+OK       verdict table row Instances (N)
+OK       validity question 1 answered
+OK       validity question 2 answered
+OK       validity question 3 answered
+OK       validity question 4 answered
+OK       validity question 5 answered
+OK       validity question 6 answered
+OK       AI assistance declared
+
+== Placeholders left in the README
+MISSING  no unfinished placeholder  [**Status:** Parts 1, 2 and 3, the verdict table and the validity answers are complete. Section 5 (co; **Billing page.** On 24 Nov 2026 at about 13:00 UTC (`logs/billing_notes.txt`): EUR 3.82 for the cur]
+
+== Content of the CSV files
+OK       fig1a.csv header has units  [factor,dataset,U_users,P_posts_per_user,F_followees,rep,n_requests,n_instances,server_medi]
+OK       fig1b.csv header has units  [F_followees,U_users,P_posts_per_user,rep,n_requests,n_instances,server_median_ms,client_me]
+OK       fig2a.csv header has units  [N_instances,C_concurrency,rep,throughput_rps,n_requests,n_failed,instances_serving]
+OK       fig2b.csv header has units  [N_instances,C_concurrency,rep,latency_median_ms,latency_mean_ms,latency_p95_ms,little_pred]
+OK       fig3.csv header has units  [version,F_followees,rep,n_requests,n_failed,instances_serving,server_median_ms,client_medi]
+OK       figures/fig1a.csv: every run served by exactly 1 instance  [12 runs, 0 different]
+OK       figures/fig1b.csv: every run served by exactly 1 instance  [40 runs, 0 different]
+OK       figures/fig3.csv: every run served by exactly 1 instance  [52 runs, 0 different]
+OK       figures/fig2a.csv: instances serving = N in every run  [42 runs, 0 different]
+
+== Not checked here
+  - default version still answers:  curl -s "https://tinyinsta-512819.ew.r.appspot.com/api/timeline?user=base_u00001" | head -c 150
+  - all fixedN / p3a versions stopped and useless versions deleted; datasets purged (end of the project)
+  - the two URLs submitted on Madoc
+
+SOME ITEMS ARE MISSING

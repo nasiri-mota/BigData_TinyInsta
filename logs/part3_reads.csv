@@ -1,0 +1,9 @@
+dataset,version,posts_returned,queries_attempted,queries_failed,entities_read_by_client
+f25,original,20,1,0,21
+f25,new,20,1,0,21
+f30,original,20,32,1,621
+f30,new,20,2,0,41
+f60,original,20,62,1,1221
+f60,new,20,3,0,61
+f100,original,20,102,1,2021
+f100,new,20,4,0,81
