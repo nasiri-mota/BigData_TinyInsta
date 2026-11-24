@@ -1,3 +1,10 @@
 2026-11-24T01:24:18Z start fixed1
 2026-11-24T01:45:20Z stop fixed1
 2026-11-24T01:46:00Z stop fixed1
+2026-11-24T01:50:12Z deploy fixed2 (start)
+2026-11-24T01:50:56Z deploy fixed2 (end)
+2026-11-24T01:50:56Z deploy fixed2 FAILED (Cloud Build: Failed to download at least one file); no version created, no instances started
+2026-11-24T01:51:57Z deploy fixed2 retry from minimal copy (start)
+2026-11-24T01:52:52Z deploy fixed2 retry (end)
+2026-11-24T01:54:31Z start measurements fixed2
+2026-11-24T02:12:59Z stop fixed2

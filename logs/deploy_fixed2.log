@@ -1,0 +1,28 @@
+Services to deploy:
+
+descriptor:                  [/tmp/dep/app-fixed-2.yaml]
+source:                      [/tmp/dep]
+target project:              [tinyinsta-512819]
+target service:              [default]
+target version:              [fixed2]
+target url:                  [https://fixed2-dot-tinyinsta-512819.ew.r.appspot.com]
+target service account:      [tinyinsta-512819@appspot.gserviceaccount.com]
+
+
+     (add --promote if you also want to make this service available from
+     [https://tinyinsta-512819.ew.r.appspot.com])
+
+Beginning deployment of service [default]...
+Created .gcloudignore file. See `gcloud topic gcloudignore` for details.
+Uploading 0 files to Google Cloud Storage
+100%
+File upload done.
+Waiting for operation [apps/tinyinsta-512819/operations/operation-1795485119876-660fbf4c50e51-9599d8e2-000efb42] to complete...
+............................................................done.
+Deployed service [default] to [https://fixed2-dot-tinyinsta-512819.ew.r.appspot.com]
+
+You can stream logs from the command line by running:
+  $ gcloud app logs tail -s default
+
+To view your application in the web browser run:
+  $ gcloud app browse
