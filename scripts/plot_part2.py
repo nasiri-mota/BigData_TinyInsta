@@ -82,7 +82,7 @@ for N in Ns:
         a.plot([p[0] for p in pts], [p[1] for p in pts], ".", color="gray", alpha=0.5)
 a.set_xscale("log", base=2); a.set_ylim(bottom=0)
 a.set_xlabel("C (simultaneous Locust users)"); a.set_ylabel("throughput (HTTP 200 per second)")
-a.set_title("Throughput vs concurrency — fixedN, dataset base (U=1000, P=20, F=20)")
+a.set_title("Throughput vs concurrency — fixedN\ndataset base (U=1000, P=20, F=20)")
 a.legend(); a.grid(alpha=0.3)
 fig.tight_layout(); fig.savefig(f"{OUT}/fig2a.png", dpi=150); plt.close(fig)
 

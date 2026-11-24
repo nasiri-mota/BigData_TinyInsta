@@ -62,7 +62,7 @@ for a, factor, sets, idx, fixed in ((ax[0], "U", ["u100", "base", "u10000"], 0, 
         ys = [data.get(p, {}).get(rep, {}).get("server_median_ms", float("nan")) for p in sets]
         a.plot(xs, ys, "o", alpha=0.6, label=f"run {rep}")
     a.plot(xs, [mean_over_reps(p, "server_median_ms") for p in sets], "-", color="gray", label="mean")
-    a.set_xscale("log"); a.set_ylim(bottom=0)
+    a.set_xscale("log"); a.set_ylim(0, a.get_ylim()[1] * 1.12)
     a.set_xlabel(f"{factor} ({'users' if factor == 'U' else 'posts per user'})")
     a.set_ylabel("median server time (ms)")
     a.set_title(f"Factor {factor} — fixed: {fixed}\nfixed1, one request at a time")

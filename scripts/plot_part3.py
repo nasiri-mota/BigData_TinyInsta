@@ -75,7 +75,7 @@ a = ax[0]
 if Fp:
     a.plot(Fp, [mean_part1(F) for F in Fp], "--", color="gray", label="original code, Part 1 (previous night)")
 fx = [F for F in Fs if mean_over(data, "server_median_ms", "fixed1", F) == mean_over(data, "server_median_ms", "fixed1", F)]
-a.plot(fx, [mean_over(data, "server_median_ms", "fixed1", F) for F in fx], "s-", color="C3", label="original code (fixed1), same session")
+a.plot(fx, [mean_over(data, "server_median_ms", "fixed1", F) for F in fx], "s", color="C3", label="original code (fixed1), before p3a, same session")
 fa = [F for F in Fs if mean_over(data, "server_median_ms", "fixed1after", F) == mean_over(data, "server_median_ms", "fixed1after", F)]
 a.plot(fa, [mean_over(data, "server_median_ms", "fixed1after", F) for F in fa], "^", color="C1", label="original code (fixed1), after p3a")
 a.plot(Fs, [mean_over(data, "server_median_ms", "p3a", F) for F in Fs], "o-", color="C0", label="new code (p3a)")
