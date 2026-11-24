@@ -13,4 +13,5 @@ python scripts/part2_server_time.py > logs/part2_server_time.txt
 python scripts/part2_little_saturation.py > logs/part2_little_saturation.txt
 python scripts/plot_part3.py > logs/part3_summary.txt
 python scripts/plot_extra.py > logs/extra_summary.txt
+python scripts/plot_extra2.py > logs/extra2_summary.txt
 echo "done: figures/*.png, figures/*.csv, logs/check_part1.txt, logs/part*_summary*.txt"

@@ -275,7 +275,7 @@ This experiment is not required by the assignment, which asks for one bottleneck
 
 **Measurement protocol.** Same as Part 2 for N = 1: C in {1, 2, 4, 8, 16, 32, 64}, 75 s per run, 2 repetitions in random order, one 20 s warm-up discarded, dataset `base`, with the same checks (instances that answered, CPU of the client). The original version `fixed1` is measured in the same session, before `p3b` (the 14 runs) and again after it (C = 8 and C = 64, 4 runs).
 
-**Attempt 1 (disturbed).** What follows, up to the heading of attempt 2, describes the first run of this experiment, with its problems.
+**Attempt 1 (disturbed).** What follows, up to the heading of attempt 2, describes the first run of this experiment, with its problems. Attempt 2 supersedes it for the size of the effect.
 
 **Verification of the start command.** The start logs (`logs/extra_p3b_startup.txt`, `logs/extra_fixed1_startup.txt`) show gunicorn 21.2.0 with `Using worker: gthread` for `p3b` and `Using worker: sync`, with a single worker, for `fixed1`: `p3b` really runs with threads and `fixed1` with one synchronous worker.
 
@@ -309,7 +309,7 @@ The saturated throughput is defined as in Part 2 (mean of the points that reach 
 
 - With 4 threads the throughput does not grow with C: 19.8 requests per second at C = 1 and 20 to 22 from C = 2 to 64, the same flat shape as with one synchronous worker, at a lower level. The latency is still proportional to C (about 45 ms per user, 2.9 s at C = 64).
 - Compared with the original start command, `p3b` is 23% lower than `fixed1` measured before it (21.4 against 27.7), 12% lower than `fixed1` measured after it (24.3), and 5% lower if the two disturbed runs of the latter are left out (22.6). The two measurements of `fixed1` differ by 12% between themselves, so the size of the loss is uncertain, between about 5 and 23%; there is no gain.
-- With a single user (C = 1), where requests cannot compete with each other, `p3b` is already slower: 19.8 against 24.1 requests per second, and 31.6 against 25.9 ms of server time (22% more).
+- With a single user (C = 1), where requests cannot compete with each other, `p3b` is already slower: 19.8 against 24.1 requests per second, and 31.6 against 25.9 ms of server time (22% more). This was not reproduced in attempt 2, where the two versions are equal within the noise at C = 1; the difference was probably due to the drift of the platform between the measurements.
 - The server time inside `get_timeline` does not grow with C with 4 threads either (31.6 ms at C = 1, 34.0 ms at C = 64, at most 41.6 ms at C = 16). If requests were executed in parallel inside the instance, I would expect either a higher throughput (waiting times overlapping) or a much longer server time (a slow CPU shared between threads); neither was observed.
 - The CPU of Cloud Shell stayed low (at most 8.8% busy on average per run), so the load generator was not a bottleneck.
 
@@ -319,9 +319,9 @@ The saturated throughput is defined as in Part 2 (mean of the points that reach 
 
 - Throughput of about 40 to 50 requests per second: refuted. The measured saturated throughput with 4 threads is 21.4 requests per second, lower than the one of the original start command measured in the same session (24.3 to 27.7).
 - Latency at C = 64 lower than 2.6 s: refuted. It is 2.9 s with 4 threads, against 2.4 s (before) and 2.5 s (after) for the original start command.
-- Why it may not help much: consistent with the result (no gain, even a loss, and a longer server time: 35 ms against 27 to 31 ms). I did not test the causes I had named (CPU contention, concurrency overhead, limits of the resources of the instance), and the data do not show requests running in parallel.
+- Why it may not help much: consistent with the result (no gain, even a loss; the longer server time of `p3b` in attempt 1, 35 ms against 27 to 31 ms, was not reproduced in attempt 2). I did not test the causes I had named (CPU contention, concurrency overhead, limits of the resources of the instance), and the data do not show requests running in parallel.
 
-**Interpretation.** The limit of about 24 to 28 requests per second of one instance is not the number of gunicorn workers or threads: with 4 threads the capacity did not increase. The single synchronous worker explains why requests wait in a queue before `get_timeline` starts (Part 2), but giving the instance threads did not make it process requests in parallel. Two explanations fit this and I tested neither: the work of a request is limited by the CPU of a class B1 instance (a slow CPU, on which threads only add switching overhead), or the platform delivers the requests to an instance one at a time. A larger instance class or a measure of the CPU of the instance would separate them. The extra experiment therefore refines the explanation of the capacity of Part 2 (see 2.2); the fix of Part 3 is not affected.
+**Interpretation.** The limit of about 24 to 28 requests per second of one instance is not the number of gunicorn workers or threads: with 4 threads the capacity did not increase. The single synchronous worker explains why requests wait in a queue before `get_timeline` starts (Part 2), but giving the instance threads did not make it process requests in parallel. Two explanations fit this and I tested neither: the work of a request is limited by the CPU of a class B1 instance (a slow CPU), or the platform delivers the requests to an instance one at a time. A larger instance class or a measure of the CPU of the instance would separate them. The extra experiment therefore refines the explanation of the capacity of Part 2 (see 2.2); the fix of Part 3 is not affected.
 
 **Limits.** One instance, one value of the number of threads (4), no variation of the number of workers, no other instance class; three disturbed runs; and the two measurements of `fixed1`, 45 minutes apart, differ by about 12%.
 
@@ -331,7 +331,48 @@ The saturated throughput is defined as in Part 2 (mean of the points that reach 
 
 **Design (decided on 24 Nov 2026 after seeing attempt 1, before attempt 2 gave any result).** `fixed1` and `p3b` run at the same time. For each repetition and each C (in random order), the two versions are measured one after the other, in a random order, so that a drift of the platform affects both of them; the comparison is made on the ratio between the two members of each pair. The rest of the protocol is unchanged: 75 s per run, 2 repetitions, dataset `base`, warm-up discarded, the same checks of instances and client CPU. A run is called disturbed if more than one instance answered or if more than 100 requests failed. The whole experiment is one command (`scripts/extra2_all.sh`, started with `nohup`) which also stops both versions at the end. The hypotheses above are unchanged. The start logs of attempt 2 (`logs/extra2_fixed1_startup.txt`, `logs/extra2_p3b_startup.txt`) again show `Using worker: sync` for `fixed1` and `Using worker: gthread` for `p3b`. The measurements started at 16:51 UTC.
 
-Status: the results of attempt 2 are being measured.
+**Measurements (attempt 2).** 28 runs (`raw/extra2/`, `scripts/part2_extra_interleaved.sh`; analysis in `scripts/plot_extra2.py`, `figures/fig_extra2.csv`, `figures/extra2_pairs.csv`, `figures/extra2_summary.csv`), from 16:51 UTC for about 38 minutes. In all of them one instance answered and no run was disturbed. The only failures are network errors (status 0, at most 11 per run, none at C = 1 or 2); there was no HTTP error status. The CPU of Cloud Shell was at most 5.9% busy on average.
+
+**Fig. 5** (left: throughput against C, grey points are the single runs; right: median client latency against C; one instance of class B1, dataset `base`: U = 1000, P = 20, F = 20)
+
+![Figure 5](figures/fig_extra2.png)
+
+| C | `fixed1`: req/s (run 1 / run 2) | `p3b`: req/s (run 1 / run 2) | Ratio `p3b` / `fixed1` (pair 1 / pair 2) | Median latency (ms), `fixed1` / `p3b` | Server time (ms), `fixed1` / `p3b` |
+|---|---|---|---|---|---|
+| 1 | 19.9 / 22.4 | 21.3 / 21.6 | 1.07 / 0.96 | 43 / 41 | 29.4 / 24.2 |
+| 2 | 21.1 / 23.1 | 21.3 / 22.7 | 1.01 / 0.98 | 84 / 92 | 31.8 / 26.5 |
+| 4 | 23.6 / 25.3 | 23.4 / 22.9 | 0.99 / 0.91 | 153 / 175 | 29.5 / 26.0 |
+| 8 | 24.7 / 24.6 | 22.5 / 21.6 | 0.91 / 0.88 | 311 / 362 | 29.6 / 24.9 |
+| 16 | 23.5 / 24.1 | 21.1 / 23.9 | 0.90 / 0.99 | 612 / 689 | 29.6 / 25.0 |
+| 32 | 25.9 / 24.1 | 21.0 / 21.7 | 0.81 / 0.90 | 1206 / 1431 | 28.9 / 24.9 |
+| 64 | 24.1 / 24.4 | 22.6 / 22.5 | 0.94 / 0.92 | 2578 / 2759 | 30.9 / 26.0 |
+
+(latency and server time: mean of the 2 runs; the two members of a pair were measured one after the other)
+
+| Version | Saturated throughput (req/s) | Median server time (ms) | Median latency at C = 64 (ms) |
+|---|---|---|---|
+| `fixed1` | 24.4 | 30.2 | 2578 |
+| `p3b` (4 threads) | 22.1 | 25.2 | 2759 |
+
+**What the data show.**
+
+- With 4 threads the throughput still does not grow with C: 21.4 requests per second at C = 1 and 21 to 23 from C = 2 to 64. With the original start command it grows slightly, from 21.1 at C = 1 to 24 to 25 from C = 4.
+- The ratio between the two members of a pair is 0.94 on average (from 0.81 to 1.07; `p3b` is higher in 2 pairs out of 14): 0.99 for C up to 4, where there is no difference, and 0.91 for C from 8, where requests queue. In that range the median latency of `p3b` is 4 to 22% higher (14% on average); at C = 64 it is 2.76 s against 2.58 s. The saturated throughput is 9% lower (22.1 against 24.4). With only 2 repetitions per C and ratios between 0.81 and 1.07, a loss of about 6 to 9% is small and close to the noise; there is no gain.
+- With a single user (C = 1) the two versions are the same within the noise (ratios 1.07 and 0.96).
+- The server time inside `get_timeline` is lower with `p3b` in all 14 pairs (by 0.9 to 7.7 ms, 4.6 ms on average), so the loss does not come from the work done inside the function; the extra time is spent outside it, and I do not know where. The server time of `p3b` does not grow with C either (24 to 27 ms): no sign of parallel execution.
+- The CPU of Cloud Shell stayed low (at most 5.9% busy on average), so the load generator was not a bottleneck.
+
+**Comparison with attempt 1.** Both attempts refute the hypotheses on the throughput and on the latency, and both show no gain with threads. The size of the loss is clearer in attempt 2: about 9% in saturated throughput (22.1 against 24.4) and 6% on average between pairs, which lies at the low end of the 5 to 23% range of attempt 1. Three secondary observations of attempt 1 were not reproduced and were probably due to the drift of the platform between its measurements: the slowdown at C = 1, the longer server time of `p3b` (25 ms against 30 ms in attempt 2), and the large gap between `p3b` and the first measurement of `fixed1`. The saturated throughput of `p3b` was stable (21.4 and 22.1) while that of `fixed1` varied (27.7, 24.3 and 24.4 in the three measurements).
+
+**Comparison with my hypotheses, attempt 2.**
+
+- Throughput of about 40 to 50 requests per second: refuted (22.1, against 24.4 for the original start command).
+- Latency at C = 64 lower than 2.6 s: refuted (2.76 s against 2.58 s).
+- Why it may not help much: consistent with the result (no gain, a small loss). I did not test the causes I had named, and the data show neither a longer time inside the function nor a parallel execution.
+
+**Interpretation.** The conclusion of attempt 1 stands, with a better measurement: the limit of about 24 requests per second of one instance is not the number of gunicorn workers or threads, since 4 threads do not increase it and the instance does not process requests in parallel. The server time inside the function is not what is lost with threads, so the overhead is outside `get_timeline` (worker, platform, serialization; not separated). The two explanations of attempt 1 remain open: the CPU of a class B1 instance, or the platform delivering the requests to an instance one at a time.
+
+**Limits of attempt 2.** One instance, one value of the number of threads, no variation of the number of workers, no other instance class; 2 repetitions per C; no statistical test on the pairs.
 
 ## 3. Verdicts
 
@@ -341,7 +382,7 @@ Status: the results of attempt 2 are being measured.
 | Posts per user (P) | Yes | P from 10 to 1,000 (U = 100, F = 20): 22 to 24 ms | Same index; only the most recent entries of each author are read | Fig. 1a |
 | Followees (F), original code | Only up to F = 29 | About 20 to 25 ms up to F = 25; about 420 ms at F = 30; about 1.3 s at F = 100 (Part 1), 2.4 s in the session of Part 3 | The `IN` filter accepts at most 30 values (verified); above that the code issues one sequential query per author, about 13 ms each | Fig. 1b, `logs/check_in_limit.log` |
 | Followees (F), with the fix | Yes, in the range tested | F up to 100: 28 ms at F up to 25, 110 ms at F = 90 to 100; 19 to 22 times faster than the original code at F = 100, same session | One query per group of at most 30 authors: about 21 ms for each additional group (queries still sequential) | Fig. 3 |
-| Instances (N) | Almost linearly | N = 1, 2, 4 and C up to 64: saturated throughput 24, 44 and 102 requests per second (speed-up 1.8 and 4.2, efficiency 0.9 to 1.06, within a noise of about 10%) | Each instance saturates at about 24 requests per second from a concurrency of 2; each instance runs one synchronous gunicorn worker (start log), but 4 threads did not raise the capacity (extra experiment), so the limit is not the number of workers or threads and its cause is not established; the client was not the bottleneck | Fig. 2a, 2b, `figures/part2_capacity.csv` |
+| Instances (N) | Almost linearly | N = 1, 2, 4 and C up to 64: saturated throughput 24, 44 and 102 requests per second (speed-up 1.8 and 4.2, efficiency 0.9 to 1.06, within a noise of about 10%) | Each instance saturates at about 24 requests per second from a concurrency of 2; each instance runs one synchronous gunicorn worker (start log), but 4 threads did not raise the capacity (extra experiment: 6 to 9% lower in the alternating measurements), so the limit is not the number of workers or threads and its cause is not established; the client was not the bottleneck | Fig. 2a, 2b, `figures/part2_capacity.csv` |
 
 **Overall.** In the ranges tested, the cost of a timeline does not depend on the amount of data (U and P) and the capacity grows almost linearly with the number of instances (each instance serves about 24 timelines per second for F = 20). The weak point of the original application is F: beyond 29 followees the time grows by about 13 ms per followee, and grouping the authors by 30 removes that cliff. Limits of these conclusions: U up to 10,000, P up to 1,000, F up to 100, N up to 4, C up to 64, one region, one dataset per point, 2 repetitions per point.
 
@@ -349,7 +390,7 @@ Status: the results of attempt 2 are being measured.
 
 **Answers to the six questions.**
 
-1. *How many instances served each measurement?* Part 1: exactly 1 in all 52 runs. Part 2: 1, 2 and 4 in the 14 runs of each version (42 runs). Part 3: exactly 1 in all 52 runs. Extra experiment: exactly 1 in 30 of the 32 runs; in 2 runs of `fixed1` two instances answered, because the instance was replaced during the run (see the end of 2.3). Counted as the number of distinct `X-Instance` values among the HTTP 200 answers (`logs/check_part1.txt`, `figures/part2_checks.csv`, `logs/part3_summary.txt`). Before the Part 2 runs, `gcloud app instances list` showed 2 instances for `fixed2` and 4 for `fixed4`.
+1. *How many instances served each measurement?* Part 1: exactly 1 in all 52 runs. Part 2: 1, 2 and 4 in the 14 runs of each version (42 runs). Part 3: exactly 1 in all 52 runs. Extra experiment, attempt 2: exactly 1 in all 28 runs. Extra experiment, attempt 1: exactly 1 in 30 of the 32 runs; in 2 runs of `fixed1` two instances answered, because the instance was replaced during the run (see the end of 2.3). Counted as the number of distinct `X-Instance` values among the HTTP 200 answers (`logs/check_part1.txt`, `figures/part2_checks.csv`, `logs/part3_summary.txt`). Before the Part 2 runs, `gcloud app instances list` showed 2 instances for `fixed2` and 4 for `fixed4`.
 2. *Are the runs independent?* Within each version the datasets (Parts 1 and 3) or the concurrency levels (Part 2) were run in random order, with 2 repetitions. The versions were not interleaved: the three versions of Part 2 were measured one after the other within about 70 minutes, and in Part 3 the original code was measured before and after the new code. The measurements of the original code differ by about 8 to 11% inside the Part 3 session and by a factor of 1.35 to 1.8 between the Part 1 and the Part 3 sessions, without established explanation (Part 1 was run around 23:30 UTC and Part 3 around 13:00 UTC; I did not test whether the time of day plays a role). The second repetition is slower than the first in all the cases of Fig. 1a. I therefore compare values only inside one session, and treat differences below about 10% as noise.
 3. *What is the share of the network?* Part 1: client latency minus server time is 12 to 14 ms in most runs (median 13 ms; 8 of the 40 runs of the F series, all with F from 50 to 90, show 15 to 34 ms), about 37% of the latency for F up to 25 and about 1% at F = 100. In the Part 3 session the gap was about 30 ms at F = 20 and 13 to 22 ms for F from 30 to 100, for a reason I do not know. In Part 2 the latency includes the waiting time in the queue of the instance, so the network share was not computed separately.
 4. *What is counted as a failure?* An answer whose status is not 200, or a network error (status 0). Part 1: 0 out of the 52 runs (a pilot run on the autoscaled version had 2 failures out of 924 requests at its start). Part 2: 138 out of 142,479 requests (0.10%), only `gaierror` (92) and `ConnectionRefusedError` (46), none at C = 1 or 2, no HTTP error status. Part 3: 0. In Parts 1 to 3 the only HTTP status code observed was 200 and the failures are network-level errors (status 0 in the logs). In the extra experiment HTTP 500 appeared in 3 runs of `fixed1` (6,588 answers in total, see the end of 2.3); this is the only time a status other than 200 was seen. The causes of the failures of Part 2 are unknown.
@@ -367,7 +408,7 @@ Status: the results of attempt 2 are being measured.
 - *Part 3 compared with Part 1.* The original code was slower in the Part 3 session than in Part 1: about 1.35 times at F = 20, 1.7 times at F = 30 and 1.8 times at F = 60 and 100, with no established explanation; the two sessions took place at different times of day (around 23:30 UTC and around 13:00 UTC), which may play a role, and I did not test it. Values of Part 1 and of Part 3 must therefore not be mixed; only the same-session values are compared.
 - *Part 3, order of the measurements.* The versions were not interleaved: original code (8 runs), then `p3a` (40 runs), then the original code again (4 runs). The two measurements of the original code surround those of `p3a`, which limits but does not remove an effect of the time of measurement.
 - *Part 3, same configuration.* `p3a` was deployed with a script that I wrote to produce the same settings as `deploy_fixed.sh 1` (class B1, one fixed instance); I did not compare the generated file with the one of `fixed1` line by line.
-- *Extra experiment.* `fixed1` before, `p3b` and `fixed1` after were measured in this order within about 65 minutes (the second repetition of the last one 20 minutes later, after a disconnection of Cloud Shell). The original start command changed by about 12% in throughput and 16% in server time between its two measurements, so the comparison with `p3b` is given against both. Three runs of `fixed1` were disturbed by HTTP 500 bursts and are reported with and without.
+- *Extra experiment.* `fixed1` before, `p3b` and `fixed1` after were measured in this order within about 65 minutes (the second repetition of the last one 20 minutes later, after a disconnection of Cloud Shell). The original start command changed by about 12% in throughput and 16% in server time between its two measurements, so the comparison with `p3b` is given against both. Three runs of `fixed1` were disturbed by HTTP 500 bursts and are reported with and without. Attempt 2 alternated the two versions to remove this drift; it had no disturbed run and no HTTP error status.
 - *Part 3, code path.* The equality of the answers was checked on 40 users of 4 datasets and on one user through the deployed version, not on every user. Each timing run queries a single user (`-u 1`).
 
 ## 5. Cost of the campaign
