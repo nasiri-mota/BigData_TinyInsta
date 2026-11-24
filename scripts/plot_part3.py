@@ -59,13 +59,15 @@ for F in Fs:
     before = mean_over(data, "server_median_ms", "fixed1", F)
     after = mean_over(data, "server_median_ms", "p3a", F)
     p1 = mean_part1(F)
-    rows.append([F, round(before, 1), round(after, 1),
+    before2 = mean_over(data, "server_median_ms", "fixed1after", F)
+    rows.append([F, round(before, 1), round(before2, 1), round(after, 1),
                  round(before / after, 1) if before == before and after == after and after > 0 else "",
+                 round(before2 / after, 1) if before2 == before2 and after == after and after > 0 else "",
                  round(p1, 1)])
 with open(f"{OUT}/part3_summary.csv", "w", newline="") as fh:
     w = csv.writer(fh, lineterminator="\n")
-    w.writerow(["F_followees", "fixed1_same_session_server_ms", "p3a_server_ms", "speedup_fixed1_over_p3a",
-                "part1_original_previous_night_server_ms"])
+    w.writerow(["F_followees", "fixed1_before_p3a_server_ms", "fixed1_after_p3a_server_ms", "p3a_server_ms",
+                "speedup_vs_fixed1_before", "speedup_vs_fixed1_after", "part1_original_previous_night_server_ms"])
     w.writerows(rows)
 
 fig, ax = plt.subplots(1, 2, figsize=(11, 4.4))
@@ -74,6 +76,8 @@ if Fp:
     a.plot(Fp, [mean_part1(F) for F in Fp], "--", color="gray", label="original code, Part 1 (previous night)")
 fx = [F for F in Fs if mean_over(data, "server_median_ms", "fixed1", F) == mean_over(data, "server_median_ms", "fixed1", F)]
 a.plot(fx, [mean_over(data, "server_median_ms", "fixed1", F) for F in fx], "s-", color="C3", label="original code (fixed1), same session")
+fa = [F for F in Fs if mean_over(data, "server_median_ms", "fixed1after", F) == mean_over(data, "server_median_ms", "fixed1after", F)]
+a.plot(fa, [mean_over(data, "server_median_ms", "fixed1after", F) for F in fa], "^", color="C1", label="original code (fixed1), after p3a")
 a.plot(Fs, [mean_over(data, "server_median_ms", "p3a", F) for F in Fs], "o-", color="C0", label="new code (p3a)")
 a.set_ylim(bottom=0); a.set_xlabel("F (followees per user)"); a.set_ylabel("median server time (ms)")
 a.set_title("Before / after — U = 120, P = 20, one request at a time"); a.legend(fontsize=8); a.grid(alpha=0.3)
@@ -88,8 +92,8 @@ b.set_ylim(bottom=0); b.set_xlabel("F (followees per user)"); b.set_ylabel("medi
 b.set_title("New code only (dotted lines: F = 30, 60, 90)"); b.legend(fontsize=8); b.grid(alpha=0.3)
 fig.tight_layout(); fig.savefig(f"{OUT}/fig3.png", dpi=150); plt.close(fig)
 
-print("F    fixed1(ms)  p3a(ms)  speedup  part1(ms)")
+print("F    fixed1_before  fixed1_after  p3a(ms)  speedup_b  speedup_a  part1(ms)")
 for r in rows:
-    print(f"{r[0]:<5}{str(r[1]):<12}{str(r[2]):<9}{str(r[3]):<9}{r[4]}")
+    print(f"{r[0]:<5}{str(r[1]):<15}{str(r[2]):<14}{str(r[3]):<9}{str(r[4]):<11}{str(r[5]):<11}{r[6]}")
 bad = [(k, s["instances"], s["n_failed"]) for k, s in sorted(data.items()) if s["instances"] != 1 or s["n_failed"] > 0]
 print("runs with instances != 1 or failures:", bad if bad else "none")
