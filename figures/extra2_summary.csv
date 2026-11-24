@@ -1,0 +1,3 @@
+version,n_runs,n_disturbed_runs,saturated_throughput_rps_all_runs,saturated_throughput_rps_without_disturbed,latency_median_C64_ms,server_median_all_runs_ms,max_client_cpu_busy_mean_pct
+fixed1,14,0,24.4,24.4,2578.2,30.2,5.9
+p3b,14,0,22.1,22.1,2758.6,25.2,5.7

@@ -1,0 +1,5 @@
+version  runs  disturbed  sat_thr(all)  sat_thr(clean)  lat_med_C64  srv_med  max_cpu_mean%
+fixed1   14    0          24.4          24.4            2578.2       30.2     5.9
+p3b      14    0          22.1          22.1            2758.6       25.2     5.7
+paired ratio p3b / fixed1 (throughput): mean 0.94, min 0.81, max 1.07, p3b higher in 2 of 14 pairs; without disturbed pairs: mean 0.94 (14 pairs)
+disturbed runs: none

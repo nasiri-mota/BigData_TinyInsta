@@ -31,3 +31,6 @@
 2026-11-24T16:22:57Z stop p3b (its measurements ended about 16:01; the stop command was lost in a Cloud Shell disconnection)
 2026-11-24T16:22:58Z fixed1 still running: finishing the missing fixed1after runs (rep 2)
 2026-11-24T16:25:56Z stop fixed1 (extra experiment done)
+2026-11-24T16:50:12Z start fixed1 and p3b (extra experiment, attempt 2)
+2026-11-24T16:51:28Z start extra experiment attempt 2 measurements
+2026-11-24T17:27:40Z stop fixed1 and p3b (extra experiment, attempt 2 done)

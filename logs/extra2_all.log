@@ -1,0 +1,85 @@
+nohup: ignoring input
+2026-11-24T16:50:12Z start fixed1 and p3b (extra experiment, attempt 2)
+Starting the following versions:
+ - tinyinsta-512819/default/fixed1
+ - tinyinsta-512819/default/p3b
+Starting [tinyinsta-512819/default/fixed1]...
+Waiting for operation [apps/tinyinsta-512819/operations/operation-1795539013918-66108811add7c-d8805a24-a43f96d7] to complete...
+..done.
+.done.
+Starting [tinyinsta-512819/default/p3b]...
+Waiting for operation [apps/tinyinsta-512819/operations/operation-1795539016936-661088148ed9d-42c720b5-688b6859] to complete...
+..done.
+.done.
+https://fixed1-dot-tinyinsta-512819.ew.r.appspot.com
+https://p3b-dot-tinyinsta-512819.ew.r.appspot.com
+{"count":20,"items":[{"author":"base_u00007","content":"Post
+{"count":20,"items":[{"author":"base_u00007","content":"Post
+--- fixed1 startup:
+2026-11-24 16:50:40 default[fixed1]  [2026-11-24 16:50:40 +0000] [13] [INFO] Starting gunicorn 21.2.0
+2026-11-24 16:50:40 default[fixed1]  [2026-11-24 16:50:40 +0000] [13] [INFO] Using worker: sync
+2026-11-24 16:50:40 default[fixed1]  [2026-11-24 16:50:40 +0000] [17] [INFO] Booting worker with pid: 17
+--- p3b startup:
+2026-11-24 16:50:40 default[p3b]  [2026-11-24 16:50:40 +0000] [13] [INFO] Starting gunicorn 21.2.0
+2026-11-24 16:50:40 default[p3b]  [2026-11-24 16:50:40 +0000] [13] [INFO] Using worker: gthread
+2026-11-24 16:50:40 default[p3b]  [2026-11-24 16:50:40 +0000] [16] [INFO] Booting worker with pid: 16
+2026-11-24T16:51:28Z start extra experiment attempt 2 measurements
+16:52:09 fixed1 rep1 C=4
+16:53:25 p3b rep1 C=4
+16:54:41 p3b rep1 C=64
+16:55:57 fixed1 rep1 C=64
+16:57:13 p3b rep1 C=8
+16:58:29 fixed1 rep1 C=8
+16:59:44 p3b rep1 C=16
+17:01:00 fixed1 rep1 C=16
+17:02:16 p3b rep1 C=2
+17:03:32 fixed1 rep1 C=2
+17:04:48 p3b rep1 C=1
+17:06:04 fixed1 rep1 C=1
+17:07:19 p3b rep1 C=32
+17:08:35 fixed1 rep1 C=32
+17:09:51 p3b rep2 C=64
+17:11:07 fixed1 rep2 C=64
+17:12:23 p3b rep2 C=4
+17:13:39 fixed1 rep2 C=4
+17:14:54 p3b rep2 C=32
+17:16:10 fixed1 rep2 C=32
+17:17:26 p3b rep2 C=8
+17:18:42 fixed1 rep2 C=8
+17:19:58 p3b rep2 C=2
+17:21:13 fixed1 rep2 C=2
+17:22:29 fixed1 rep2 C=16
+17:23:45 p3b rep2 C=16
+17:25:01 p3b rep2 C=1
+17:26:17 fixed1 rep2 C=1
+DONE
+Stopping the following versions:
+ - tinyinsta-512819/default/fixed1
+ - tinyinsta-512819/default/p3b
+Stopping [tinyinsta-512819/default/fixed1]...
+Waiting for operation [apps/tinyinsta-512819/operations/operation-1795541253993-66109069fb566-2eb6e354-012e8f98] to complete...
+..done.
+.done.
+Stopping [tinyinsta-512819/default/p3b]...
+Waiting for operation [apps/tinyinsta-512819/operations/operation-1795541257007-6610906cdb22d-9dfe7828-bdbc02d7] to complete...
+..done.
+.done.
+2026-11-24T17:27:40Z stop fixed1 and p3b (extra experiment, attempt 2 done)
+VERSION.ID: 20261026t201511
+SERVING_STATUS: SERVING
+VERSION.ID: fixed1
+SERVING_STATUS: STOPPED
+VERSION.ID: fixed2
+SERVING_STATUS: STOPPED
+VERSION.ID: fixed4
+SERVING_STATUS: STOPPED
+VERSION.ID: p3a
+SERVING_STATUS: STOPPED
+VERSION.ID: p3b
+SERVING_STATUS: STOPPED
+version  runs  disturbed  sat_thr(all)  sat_thr(clean)  lat_med_C64  srv_med  max_cpu_mean%
+fixed1   14    0          24.4          24.4            2578.2       30.2     5.9
+p3b      14    0          22.1          22.1            2758.6       25.2     5.7
+paired ratio p3b / fixed1 (throughput): mean 0.94, min 0.81, max 1.07, p3b higher in 2 of 14 pairs; without disturbed pairs: mean 0.94 (14 pairs)
+disturbed runs: none
+ALL DONE
