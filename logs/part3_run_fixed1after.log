@@ -1,0 +1,5 @@
+13:50:30 fixed1after rep1 f100
+13:51:16 fixed1after rep1 f30
+13:52:01 fixed1after rep2 f100
+13:52:47 fixed1after rep2 f30
+DONE -> stop the version: gcloud app versions stop fixed1after
