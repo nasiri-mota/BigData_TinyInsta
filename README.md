@@ -199,7 +199,22 @@ Crossing F = 30 multiplies both the latency and the Datastore cost by about 30.
 
 ### 2.3 Part 3 — Fix and re-measure
 
-Not started. Candidate bottlenecks so far: (a) the 30-value limit of `IN` in `get_timeline` (Part 1); (b) one request at a time per instance (Part 2 hypothesis). The choice will be made after Part 2.
+**Chosen bottleneck.** The 30-value limit of the `IN` filter in `get_timeline` (Part 1): above 29 followees, the application falls back to one query per author and the time grows linearly with F. A second candidate (one request at a time per instance, Part 2) may be tried afterwards as an extra experiment, only if time allows; it is not part of this section.
+
+**Planned fix.** Split the F + 1 authors into groups of at most 30, run one `author IN (...)` query per group (each with `limit` 20, ordered by `created` descending), merge the results in memory, sort by `created` descending and keep the 20 most recent. The modified code will be in `part3/` and deployed as a separate version (`p3a`, class B1, 1 fixed instance, `--no-promote`); the instructor's `main.py` and the default version stay untouched.
+
+**Hypotheses (written on 24 Nov 2026, before any Part 3 code was written, deployed or measured).** I worked these predictions out with the AI assistant from the Part 1 data and I accepted them after reading them; they are not entirely my own reasoning.
+
+- *F up to 29:* no change. With 30 authors or fewer there is a single group, which is the same single query as before; only the merge of at most 20 posts is added. I expect the same 20 to 25 ms.
+- *F = 100:* about 70 to 100 ms instead of about 1,330 ms, that is about 15 times faster. The 101 authors make 4 groups, so 4 queries instead of 101; if one query costs about 15 to 20 ms (deduced from Part 1 with 6 to 26 authors, not measured for 30 authors), the total is about 4 x 18 + 5 ms. The curve of Fig. 1b should become a staircase, with a step at F = 30, 60 and 90 (the number of groups is the ceiling of (F + 1) / 30) and a step height of about 15 to 20 ms.
+- *Biggest uncertainty:* the cost of a query with 30 values was not measured; if it is much higher than one with 26 values, the prediction above is optimistic.
+- *Entities read and cost* (same assumptions and price as in 2.1): 1 + 20 x (number of groups), that is 41 entities at F = 30 and 81 at F = 100 instead of 621 and 2021; for 1 million timelines about 24.6 and 48.6 USD instead of 372.6 and 1,212.6 USD.
+- *Correctness:* the 20 most recent posts overall are always among the 20 most recent of one group, so merging and keeping 20 gives the same answer as before. I will check it by comparing the lists returned by the old and the new code for several users of several datasets (for example `f30`, `f60`, `f100`). The only difference I expect is the order of two posts created at exactly the same second.
+- *Cost of the fix:* more complex code (grouping and an in-memory merge), one more sequential query for every 30 additional authors (the queries are not run in parallel), no benefit for F up to 29.
+
+**Measurement protocol (same as Part 1 for the F series).** One fixed instance, one request at a time, the 20 datasets `f05` to `f100`, 45 s per run, 2 repetitions in random order, one warm-up discarded. The "before" values are the Part 1 measurements. Because Part 2 showed differences of about 20% between sessions, I will also re-measure the original version `fixed1` for F = 20, 30, 60 and 100 in the same session as the new version, and report both.
+
+Status: nothing has been written, deployed or measured for Part 3 yet.
 
 ## 3. Validity notes so far (Parts 1 and 2)
 
