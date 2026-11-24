@@ -5,8 +5,6 @@
 **Repository:** https://github.com/nasiri-mota/BigData_TinyInsta
 **Origin of the project:** the instructor's repository, https://gitlab.univ-nantes.fr/molli-p/tinyinsta-2026 (the application, the measurement tools in `bench/` and the assignment come from it and were not modified; everything else in this repository is my work, with the AI assistance declared at the end).
 
-**Status:** Parts 1, 2 and 3, the verdict table and the validity answers are complete. Section 5 (cost of the campaign) will be filled in once the billing report is up to date.
-
 ## Summary
 
 **Short answer.** In the ranges tested, TinyInsta scales with the amount of data: the time to build a timeline stays at about 21 to 25 ms when the number of users goes from 100 to 10,000 and the number of posts per user from 10 to 1,000. Its capacity grows almost linearly with the number of instances (about 24, 44 and 102 timelines per second for 1, 2 and 4 instances). It does not scale with the number of followees: beyond 29 followees the time of a timeline jumps by a factor of about 18 and then grows linearly, because Datastore accepts at most 30 values in an `IN` filter and the application falls back to one query per author. Grouping the authors by 30 removes this cliff (19 to 22 times faster at 100 followees, with identical answers). Giving each instance 4 threads instead of one worker does not increase its capacity.
@@ -45,11 +43,12 @@ The instructor's tools print their messages in French; I did not modify them, so
 
 - **GCP project:** `tinyinsta-512819`. App Engine in region europe-west (URL ending `.ew.r.appspot.com`), runtime `python312`.
 - **Budget:** a budget alert at 20 USD was created in Billing (Budgets and alerts).
+- **Live application:** the default version, https://tinyinsta-512819.ew.r.appspot.com (autoscaling, class F1), stays deployed. As the assignment asks, all the datasets of the measurements were purged at the end of the project and the versions `fixed1`, `fixed2`, `fixed4`, `p3a` and `p3b` were deleted. A small dataset `demo` (100 users, 20 posts and 20 followees per user, 2,100 entities) was generated so that the application answers: `/api/timeline?user=demo_u00001` returns 20 posts. The measurements can be repeated with the scripts (see Reproduce); the raw logs of all the runs are in `raw/`.
 - **Versions:** default version with autoscaling, class F1, at most 10 instances (`app.yaml`). `fixedN` versions: manual scaling, class B1, exactly N instances (`deploy_fixed.sh`). `fixed1` was deployed from the repository as it was at the time (before `raw/` and `logs/` existed). `fixed2` and `fixed4` were deployed from a minimal copy containing only `main.py`, `requirements.txt` and `deploy_fixed.sh`, because a first attempt from the whole repository failed in Cloud Build (`Failed to download at least one file`; I do not know why, my guess is the number of files). The application code is identical in all three versions. `p3a` (Part 3) was deployed with `scripts/deploy_p3.sh`, which writes the same settings as `deploy_fixed.sh 1` (class B1, one fixed instance) and uses `part3/main.py`, from a minimal copy and with `--no-promote`. `p3b` (extra experiment) was deployed with `scripts/deploy_p3b.sh`: the original `main.py` and the same settings as `fixed1`, but with gunicorn started with `--threads 4`.
 - **Datastore:** Firestore in Datastore mode, location `eur3`. Entity reads cost 0.06 USD per 100,000 above the free 50,000 per day (pricing page, `eur3` selected).
 - **Software:** Flask 3.0.0, gunicorn 21.2.0, google-cloud-datastore 2.19.0 (server); Python 3.12, Locust 2.47.0, matplotlib 3.11.2 (client).
 - **Load generator location:** Cloud Shell, 2 cores (`nproc`).
-- **Dates:** data generated on 23 Nov 2026. Part 1 measured on 23 Nov 2026 from 23:33 UTC (about 40 minutes). Part 2 measured on 24 Nov 2026 (UTC): N = 1 from 01:24 to 01:46, N = 2 from 01:52 to 02:13, N = 4 from 02:16 to 02:36 (start and stop times of each version in `logs/instance_hours.log`). Part 3 on 24 Nov 2026 (UTC): `p3a` deployed at 03:06, all the measurements between 13:00 and 13:54 (start and stop times of each version in `logs/instance_hours.log`). Extra experiment on 24 Nov 2026 (UTC): `p3b` deployed at 15:19, measurements between 15:22 and 16:26.
+- **Dates:** data generated on 23 Nov 2026. Part 1 measured on 23 Nov 2026 from 23:33 UTC (about 40 minutes). Part 2 measured on 24 Nov 2026 (UTC): N = 1 from 01:24 to 01:46, N = 2 from 01:52 to 02:13, N = 4 from 02:16 to 02:36 (start and stop times of each version in `logs/instance_hours.log`). Part 3 on 24 Nov 2026 (UTC): `p3a` deployed at 03:06, all the measurements between 13:00 and 13:54 (start and stop times of each version in `logs/instance_hours.log`). Extra experiment on 24 Nov 2026 (UTC): `p3b` deployed at 15:19, measurements between 15:22 and 16:26. Attempt 2 of the extra experiment: both versions started at 16:50:12 and were stopped at 17:27:40, measurements from 16:51.
 
 ### Datasets
 
@@ -64,7 +63,17 @@ Each dataset has a prefix: U users, exactly P posts and exactly F followees per 
 
 **Caveat:** the P and F series do not use the same U as `base` (they use 100 and 120). Comparisons are therefore made only inside a series, never against `base`.
 
-**Data generation incident.** Early generations with the default gRPC client failed (`DeadlineExceeded`, batches abandoned after 6 attempts). `Post` entities have automatic keys: a batch committed on the server but not acknowledged, then retried, creates duplicates (one dataset ended with 23,500 posts instead of 20,000). Those datasets were deleted (`gcloud firestore bulk-delete`). All datasets listed above were then regenerated with `--rest --threads 3` without errors and counted. The instructor's code was not modified. I do not know why gRPC failed; switching to REST fixed it.
+**Data generation incident.** The first attempts to generate the datasets failed, and fixing it took several steps. What happened and how it was solved (UTC, 23 Nov 2026; the error messages of the first attempts were not saved in a log file):
+
+| Step | What happened | What I did |
+|---|---|---|
+| 1 | The first generation of `base` (1,000 users) stopped on an error, and the posts already written had to be removed | The clean-up with `seed_exact.py --purge` failed: the listing of the keys exceeded its limit of 60 s (`DEADLINE_EXCEEDED`, `RetryError`). I used the server-side command `gcloud firestore bulk-delete --collection-ids=Post,User` instead (24,506 documents, 21:12 to 21:17) |
+| 2 | `t100` (2,100 entities) and `base` (21,000 entities, in 56 s) were written; a few `ServiceUnavailable` errors were retried by the script | Nothing |
+| 3 | `u10000` (210,000 entities) failed: `DeadlineExceeded` errors until a batch was abandoned after 6 attempts (`lot abandonné après 6 essais`). A second generation of `base` with `--threads 3` failed in the same way | The partial datasets were deleted with `bulk-delete` (79,200 documents, 22:00 to 22:11, then 36,600 documents, 22:42 to 22:48) |
+| 4 | Risk identified: `Post` entities have automatic keys, so a batch that the server wrote but did not acknowledge, and that is then retried, creates duplicate posts. A partial dataset had 23,500 posts instead of 20,000 (counted at the time, not saved in a log) | Every dataset is now counted after its generation (`scripts/count_dataset.py`) |
+| 5 | Generation with the REST option of the instructor's script (`--rest --threads 3`): `base` in 9.8 s without any error, then all 24 datasets without any error | The counts match exactly (`logs/count_*.log`) |
+
+The instructor's code was not modified. I do not know why the default gRPC client failed; switching to REST fixed it. The Firestore operations of the clean-ups are listed in `logs/firestore_operations.txt`. The last one, at the end of the project, deleted exactly 394,800 documents, which is the sum of the entities of the 24 datasets (21,000 + 2,100 + 210,000 + 1,100 + 10,100 + 100,100 + 50,400): a second confirmation that no duplicate post remained.
 
 ## 2. Results
 
@@ -324,7 +333,7 @@ The saturated throughput is defined as in Part 2 (mean of the points that reach 
 - The server time inside `get_timeline` does not grow with C with 4 threads either (31.6 ms at C = 1, 34.0 ms at C = 64, at most 41.6 ms at C = 16). If requests were executed in parallel inside the instance, I would expect either a higher throughput (waiting times overlapping) or a much longer server time (a slow CPU shared between threads); neither was observed.
 - The CPU of Cloud Shell stayed low (at most 8.8% busy on average per run), so the load generator was not a bottleneck.
 
-**Disturbed runs.** In 3 of the 18 runs of `fixed1`, and in none of the 14 runs of `p3b`, there were bursts of HTTP 500 answers: 2,584 answers with status 500 and 3 refused connections during the first 13 s of `fixed1` before C = 32 (second repetition), with two different instance identifiers (the first answered 335 requests, the second took over); 3,432 answers with status 500 between 0 and 60 s of `fixed1` after C = 64 (first repetition), with two instance identifiers; and 572 answers with status 500 between 25.8 and 27.0 s of `fixed1` after C = 8 (first repetition), with a single identifier. These are the only HTTP 500 answers of the whole project. A replacement of the instance would be consistent with the change of identifier, but I did not verify it and I do not know the cause. These runs are kept in `raw/extra/` and in the CSV file; the results are given with and without them.
+**Disturbed runs.** In 3 of the 18 runs of `fixed1`, and in none of the 14 runs of `p3b`, there were bursts of HTTP 500 answers: 2,584 answers with status 500 and 3 refused connections during the first 13 s of `fixed1` before C = 32 (second repetition), with two different instance identifiers (the first answered 335 requests, the second took over); 3,432 answers with status 500 between 0 and 60 s of `fixed1` after C = 64 (first repetition), with two instance identifiers; and 572 answers with status 500 between 25.8 and 27.0 s of `fixed1` after C = 8 (first repetition), with a single identifier. These are the only HTTP 500 answers that the load generator received in the whole project. The platform logs (Cloud Logging, `logs/extra_500_diagnostic.txt`) show five `ERROR` entries with status 500 for `fixed1`: four within 3 seconds of a stop command logged in `logs/instance_hours.log`, and the fifth at the end of Part 1, when the stop was not logged; they are requests interrupted by my own stop commands. There is no error entry in the time windows of the three disturbed runs. A replacement of the instance would be consistent with the change of identifier, but I did not verify it and I do not know the cause. These runs are kept in `raw/extra/` and in the CSV file; the results are given with and without them.
 
 **Comparison with my hypotheses** (written before any code or measurement, see above):
 
@@ -404,7 +413,7 @@ The saturated throughput is defined as in Part 2 (mean of the points that reach 
 1. *How many instances served each measurement?* Part 1: exactly 1 in all 52 runs. Part 2: 1, 2 and 4 in the 14 runs of each version (42 runs). Part 3: exactly 1 in all 52 runs. Extra experiment, attempt 2: exactly 1 in all 28 runs. Extra experiment, attempt 1: exactly 1 in 30 of the 32 runs; in 2 runs of `fixed1` two instances answered, because the instance was replaced during the run (see the end of 2.3). Counted as the number of distinct `X-Instance` values among the HTTP 200 answers (`logs/check_part1.txt`, `figures/part2_checks.csv`, `logs/part3_summary.txt`, `figures/fig_extra.csv`, `figures/fig_extra2.csv`). Before the Part 2 runs, `gcloud app instances list` showed 2 instances for `fixed2` and 4 for `fixed4`.
 2. *Are the runs independent?* Within each version the datasets (Parts 1 and 3) or the concurrency levels (Part 2) were run in random order, with 2 repetitions. The versions were not interleaved (except in attempt 2 of the extra experiment, which alternates them): the three versions of Part 2 were measured one after the other within about 70 minutes, and in Part 3 the original code was measured before and after the new code. The measurements of the original code differ by about 8 to 11% inside the Part 3 session and by a factor of 1.35 to 1.8 between the Part 1 and the Part 3 sessions, without established explanation (Part 1 was run around 23:30 UTC and Part 3 around 13:00 UTC; I did not test whether the time of day plays a role). The second repetition is slower than the first in all the cases of Fig. 1a. I therefore compare values only inside one session, and treat differences below about 10% as noise.
 3. *What is the share of the network?* Part 1: client latency minus server time is 12 to 14 ms in most runs (median 13 ms; 8 of the 40 runs of the F series, all with F from 50 to 90, show 15 to 34 ms), about 37% of the latency for F up to 25 and about 1% at F = 100. In the Part 3 session the gap was about 30 ms at F = 20 and 13 to 22 ms for F from 30 to 100, for a reason I do not know. In Part 2 the latency includes the waiting time in the queue of the instance, so the network share was not computed separately.
-4. *What is counted as a failure?* An answer whose status is not 200, or a network error (status 0). Part 1: 0 out of the 52 runs (a pilot run on the autoscaled version had 2 failures out of 924 requests at its start). Part 2: 138 out of 142,479 requests (0.10%), only `gaierror` (92) and `ConnectionRefusedError` (46), none at C = 1 or 2, no HTTP error status. Part 3: 0. In Parts 1 to 3 the only HTTP status code observed was 200 and the failures are network-level errors (status 0 in the logs). In the extra experiment HTTP 500 appeared in 3 runs of `fixed1` (6,588 answers in total, see the end of 2.3); this is the only time a status other than 200 was seen. The causes of the failures of Part 2 are unknown.
+4. *What is counted as a failure?* An answer whose status is not 200, or a network error (status 0). Part 1: 0 out of the 52 runs (a pilot run on the autoscaled version had 2 failures out of 924 requests at its start). Part 2: 138 out of 142,479 requests (0.10%), only `gaierror` (92) and `ConnectionRefusedError` (46), none at C = 1 or 2, no HTTP error status. Part 3: 0. In Parts 1 to 3 the only HTTP status code observed was 200 and the failures are network-level errors (status 0 in the logs). In the extra experiment HTTP 500 appeared in 3 runs of `fixed1` (6,588 answers in total, see the end of 2.3); this is the only time the load generator received a status other than 200. The causes of the failures of Part 2 are unknown.
 5. *Is the code path the one I think?* `scripts/check_in_limit.py` proves that `IN` is rejected above 30 values. The fallback to one query per author was read from `main.py` and then observed by counting the queries sent to Datastore (`scripts/check_reads.py`: for F = 30, 60 and 100, one rejected `IN` query followed by F + 1 queries). The equality of the answers of the original and the new code was checked on 40 users of 4 datasets and on one user through the deployed version. The load generator records headers and status, not the content of the answers, so it cannot show that every answer was correct. Parts 1 and 3 query a single user per run (`-u 1`); Part 2 queries many users of `base` with F = 20, which stays on the single-query path (as does the extra experiment).
 6. *How much did it cost?* See section 5.
 
@@ -437,12 +446,14 @@ The saturated throughput is defined as in Part 2 (mean of the points that reach 
 | 3 | `fixed1`, after `p3a` | 1 | 13:49:30 | 13:53:38 | 0.07 |
 | extra | `p3b` | 1 | 15:19:47 | 16:22:57 | 1.05 |
 | extra | `fixed1` | 1 | 15:22:37 | 16:25:56 | 1.06 |
+| extra, attempt 2 | `fixed1` | 1 | 16:50:12 | 17:27:40 | 0.62 |
+| extra, attempt 2 | `p3b` | 1 | 16:50:12 | 17:27:40 | 0.62 |
 
-Total logged: about 5.5 B1 instance-hours. In the extra experiment each of the two versions ran for about one hour while its measurements lasted about 20 minutes: `p3b` was idle while `fixed1` was measured, and the stop commands came about 20 minutes late because Cloud Shell was disconnected. Not logged: the Part 1 measurements on `fixed1` on 23 Nov (about 40 minutes of runs, so at least about 0.7 instance-hours) and the first deployment of `fixed1` the same day. The failed deployment of `fixed2` created no version and no instance.
+Total logged: about 6.7 B1 instance-hours. In the extra experiment each of the two versions ran for about one hour while its measurements lasted about 20 minutes: `p3b` was idle while `fixed1` was measured, and the stop commands came about 20 minutes late because Cloud Shell was disconnected. Not logged: the Part 1 measurements on `fixed1` on 23 Nov (about 40 minutes of runs, so at least about 0.7 instance-hours) and the first deployment of `fixed1` the same day. The failed deployment of `fixed2` created no version and no instance.
 
-**Datastore operations** (rough estimates from the numbers of requests and entities, with the prices of the `eur3` pricing page: 0.06 USD per 100,000 reads, 0.18 per 100,000 writes, 0.02 per 100,000 deletes, before the free daily quota). Reads in Part 2: 142,341 answered requests times 21 entities, about 3.0 million reads, about 1.8 USD. Writes: at least the 394,800 entities of the final datasets, about 0.7 USD, to which the writes of the datasets that failed and were deleted must be added. Deletes: about 140,000 documents, about 0.03 USD. I did not estimate the reads of Parts 1 and 3.
+**Datastore operations** (rough estimates from the numbers of requests and entities, with the prices of the `eur3` pricing page: 0.06 USD per 100,000 reads, 0.18 per 100,000 writes, 0.02 per 100,000 deletes, before the free daily quota). Reads in Part 2: 142,341 answered requests times 21 entities, about 3.0 million reads, about 1.8 USD. Writes: at least the 394,800 entities of the final datasets, about 0.7 USD, to which the writes of the datasets that failed and were deleted must be added. Deletes: about 140,000 documents, about 0.03 USD. I did not estimate the reads of Parts 1 and 3 nor those of the extra experiment.
 
-**Billing page.** On 24 Nov 2026 at about 13:00 UTC (`logs/billing_notes.txt`): EUR 3.82 for the current month with the credits excluded, and about EUR 254 left of the EUR 257 welcome credit (value rounded by the page); on 23 Nov, EUR 255.81 were left of EUR 257.47. The figure at the end of the campaign, read once the report is up to date, is still to be added here.
+**Billing page.** On 24 Nov 2026 at about 13:00 UTC (`logs/billing_notes.txt`): EUR 3.82 for the current month with the credits excluded, and about EUR 254 left of the EUR 257 welcome credit (value rounded by the page); on 23 Nov, EUR 255.81 were left of EUR 257.47. A last reading, made at about 17:00 UTC on 24 Nov 2026 (the exact time was not recorded), gave again EUR 3.82 with the credits excluded and about EUR 253 left of the EUR 257: the report lags and did not yet include the use of the afternoon, so the real total is higher than EUR 3.82 and was not known when this report was written. The total should remain below the 20 USD of the budget alert (my estimate from the instance-hours above, about 6.7 B1 hours in all, and from the Datastore operations; it is not verified).
 
 ## Tools and AI assistance
 
@@ -450,16 +461,18 @@ I used an AI assistant (Claude) during this project to explain concepts, write t
 
 ## Reproduce
 
-Regenerate every figure, every plotted-values CSV file and the summary tables from the raw logs (no measurement is run and nothing is deployed):
+**1. Regenerate the figures and the tables (no Google account, no cost).** Every figure, every plotted-values CSV file and every summary table is rebuilt from the raw logs in `raw/`:
 
 ```sh
+git clone https://github.com/nasiri-mota/BigData_TinyInsta.git && cd BigData_TinyInsta
 pip install matplotlib
 bash scripts/make_all.sh
+git status --short   # empty: the regenerated files are identical to the committed ones
 ```
 
-Check the deliverables listed in the assignment: `python scripts/check_deliverables.py`.
+`make_all.sh` only reads `raw/` and `logs/` and writes `figures/` and some summary files in `logs/`; it runs no measurement, deploys nothing and does not connect to Google. It runs, in this order: `check_runs.py` (instances and failures of Part 1), `plot_part1.py` (Fig. 1a and 1b), `part1_cout.py` (entities and cost), `plot_part2.py` (Fig. 2a and 2b), `part2_capacity.py`, `part2_server_time.py`, `part2_little_saturation.py`, `plot_part3.py` (Fig. 3), `plot_extra.py` (attempt 1 of the extra experiment, Fig. 4) and `plot_extra2.py` (attempt 2, Fig. 5); it stops at the first error. On 24 Nov 2026 this was tested on a fresh clone of this repository: `git status` was empty afterwards.
 
-Run the measurements again (they cost money: stop each version after use):
+**2. Run the measurements again.** They cost money (stop each version after use) and need a GCP project and the instructor's tools. All the datasets were purged at the end of the project, so they must be generated first:
 
 ```sh
 P=tinyinsta-512819
@@ -480,4 +493,9 @@ python scripts/part3_compare.py 10
 python scripts/check_reads.py
 ./scripts/part3.sh p3a "$URL3" "$(seq -s ' ' 5 5 100)" 2
 gcloud app versions stop p3a --service default --project=$P
+# extra experiment, attempt 2 (deploys p3b, starts and stops both versions)
+./scripts/deploy_p3b.sh --project=$P
+nohup bash scripts/extra2_all.sh > logs/extra2_all.log 2>&1 &
 ```
+
+**3. Try the live application.** `curl -i "https://tinyinsta-512819.ew.r.appspot.com/api/timeline?user=demo_u00001"` returns 20 posts, with the headers `X-Instance` and `Server-Timing`. The `demo` dataset was generated with `python bench/seed_exact.py --project tinyinsta-512819 --prefix demo --users 100 --posts-per-user 20 --followees 20 --rest --threads 3`.
