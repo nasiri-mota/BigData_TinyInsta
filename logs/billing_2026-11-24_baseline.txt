@@ -1,0 +1,4 @@
+Billing baseline noted on 24 Nov 2026, before any Part 2 measurement.
+Free trial credits: EUR 255.81 remaining out of EUR 257.47.
+Net cost, 1-23 Nov 2026: EUR 0.00 (savings EUR 0.03). The report lags: it does not yet include 24 Nov,
+and may not include all of the Part 1 measurements and data generation made on the night of 23-24 Nov.
