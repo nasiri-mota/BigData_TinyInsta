@@ -22,16 +22,18 @@ Part 3 replaced the one-query-per-author fallback by queries on groups of at mos
 | `bench/` | instructor, unmodified | `seed_exact.py` (data generator), `locustfile.py` (load generator) |
 | `SUJET.md`, `public/`, `site/`, `make-site.sh`, `.gitlab-ci.yml` | instructor | assignment |
 | `README_instructor.md`, `bench/README.md` | instructor | original course READMEs, kept for reference (this file is my report) |
-| `scripts/` | author | measurement orchestration, checks, figures |
+| `scripts/` | author | measurement orchestration (`part1.sh`, `part2.sh`, `part3.sh`, `deploy_p3.sh`), checks, analysis and figures; `make_all.sh` regenerates every figure and table from `raw/` |
 | `raw/` | author | raw Locust logs (`raw/part1/`, `raw/pilot/`) |
 | `logs/` | author | generation, counting and check logs |
 | `figures/` | author | figures (`.png`) and plotted values (`.csv`) |
+| `part3/` | author | modified `get_timeline` for Part 3 (`part3/main.py`); the instructor's `main.py` is not modified |
 
 The instructor's tools print their messages in French; I did not modify them, so some logs in `logs/` and `raw/` contain French text.
 
 ## 1. Setup
 
 - **GCP project:** `tinyinsta-512819`. App Engine in region europe-west (URL ending `.ew.r.appspot.com`), runtime `python312`.
+- **Budget:** a budget alert at 20 USD was created in Billing (Budgets and alerts).
 - **Versions:** default version with autoscaling, class F1, at most 10 instances (`app.yaml`). `fixedN` versions: manual scaling, class B1, exactly N instances (`deploy_fixed.sh`). `fixed1` was deployed from the repository as it was at the time (before `raw/` and `logs/` existed). `fixed2` and `fixed4` were deployed from a minimal copy containing only `main.py`, `requirements.txt` and `deploy_fixed.sh`, because a first attempt from the whole repository failed in Cloud Build (`Failed to download at least one file`; I do not know why, my guess is the number of files). The application code is identical in all three versions. `p3a` (Part 3) was deployed with `scripts/deploy_p3.sh`, which writes the same settings as `deploy_fixed.sh 1` (class B1, one fixed instance) and uses `part3/main.py`, from a minimal copy and with `--no-promote`.
 - **Datastore:** Firestore in Datastore mode, location `eur3`. Entity reads cost 0.06 USD per 100,000 above the free 50,000 per day (pricing page, `eur3` selected).
 - **Software:** Flask 3.0.0, gunicorn 21.2.0, google-cloud-datastore 2.19.0 (server); Python 3.12, Locust 2.47.0, matplotlib 3.11.2 (client).
@@ -57,8 +59,6 @@ Each dataset has a prefix: U users, exactly P posts and exactly F followees per 
 
 ### 2.1 Part 1 — Cost of a request
 
-**Protocol.** Version `fixed1` (1 instance), one request at a time (`-u 1`), 45 s per run, 2 repetitions, datasets run in random order (`shuf`), one 20 s warm-up discarded (`scripts/part1.sh`): 52 runs. For each run I report the median of `Server-Timing` and of the client latency over HTTP 200 responses. With `-u 1`, Locust always queries user `<prefix>_u00000`, so **each measurement concerns one user of the dataset**.
-
 **Initial expectations.** Written after the Part 1 measurements had been run, but before I had read or analysed the results. They are therefore not pre-registered predictions, but they were formed without looking at the numbers. They come from my first reading of the code and of the structure of the data (two kinds of entities, `User` and `Post`).
 
 - **U:** little change expected: each user's data is stored separately, so reading one user's timeline should not depend much on how many users exist.
@@ -66,6 +66,8 @@ Each dataset has a prefix: U users, exactly P posts and exactly F followees per 
 - **F:** an increase with F, which I expected to be steep (I guessed exponential), because more followees means more relations to check.
 
 *Correction to my initial reasoning.* I first thought of the timeline as a join between two tables. Datastore is a NoSQL store with no joins: `get_timeline` reads the `User` entity by key, then runs one indexed query for the 20 most recent posts of the F + 1 authors (the followees and the user) with an `author IN (...)` filter ordered by `created` descending, and falls back to one query per author if that query raises an exception.
+
+**Protocol.** Version `fixed1` (1 instance), one request at a time (`-u 1`), 45 s per run, 2 repetitions, datasets run in random order (`shuf`), one 20 s warm-up discarded (`scripts/part1.sh`): 52 runs. For each run I report the median of `Server-Timing` and of the client latency over HTTP 200 responses. With `-u 1`, Locust always queries user `<prefix>_u00000`, so **each measurement concerns one user of the dataset**.
 
 **Fig. 1a** (left: U varies, P = 20, F = 20; right: P varies, U = 100, F = 20; version fixed1, one request at a time)
 
@@ -96,18 +98,20 @@ Each dataset has a prefix: U users, exactly P posts and exactly F followees per 
 **Interpretation.**
 
 - *Why U and P do not matter.* Per timeline, the application reads one `User` entity and the top 20 posts through an index already sorted by author and date. The amount of work is bounded by the number of authors and by the limit of 20, not by the total volume of data. Expectations for U and P: confirmed, within the ranges tested (U up to 10,000 users, P up to 1,000 posts per user).
-- *Why F matters, in two regimes.* While F + 1 ≤ 30, one `IN` query does all the work in about 21 ms. Beyond that, Datastore rejects the query, the `try/except` swallows the error, and the code issues one query per author, one after the other. The roughly constant 13 ms per followee is consistent with one sequential Datastore round trip per author. That the fallback path is the one executed is read from the code and consistent with the linear slope; I did not instrument it directly.
+- *Why F matters, in two regimes.* While F + 1 ≤ 30, one `IN` query does all the work in about 21 ms. Beyond that, Datastore rejects the query, the `try/except` swallows the error, and the code issues one query per author, one after the other. The roughly constant 13 ms per followee is consistent with one sequential Datastore round trip per author. That the fallback path is the one executed was first read from the code and is consistent with the linear slope; it was later confirmed by counting the queries sent to Datastore (see the check by counting below).
 - *What I got right and wrong.* U: confirmed, no measurable effect. P: confirmed in size; the 1 to 2 ms differences between datasets are within the run-to-run noise, so I cannot even confirm the "slight increase". F: the direction was right, the shape was not. It is not exponential: the time is flat up to F = 29, jumps by a factor of about 18 at F = 30, then grows linearly (about 13 ms per followee; doubling F from 50 to 100 multiplies the time by about 1.9, not by an exponential factor). I had not taken into account the hard limit of 30 values on `IN`, which explains the step.
 
 **Network share.** Client latency minus server time is about 12 to 14 ms, almost constant. That is about 37% of the client latency for F ≤ 25 (12.6 of 34.2 ms) and about 1% at F = 100.
 
-**Entities read per timeline and cost** (`scripts/part1_cout.py`, `figures/part1_entities_cost.csv`). Assumption read from the code, not measured: 1 read of `User` plus 20 posts if F + 1 ≤ 30; otherwise 1 + 20 × (F + 1), since each author has at least 20 posts in the F series. Price: 0.06 USD per 100,000 reads. Index entries are not billed here because the query has at most one range property (pricing page).
+**Entities read per timeline and cost** (`scripts/part1_cout.py`, `figures/part1_entities_cost.csv`). Assumption read from the code, then checked by counting (see below): 1 read of `User` plus 20 posts if F + 1 ≤ 30; otherwise 1 + 20 × (F + 1), since each author has at least 20 posts in the F series. Price: 0.06 USD per 100,000 reads. Index entries are not billed here because the query has at most one range property (pricing page).
 
 | Case | Entities per timeline | Cost of 1 million timelines |
 |---|---|---|
 | any U or P, F ≤ 29 | 21 | 12.6 USD |
 | F = 30 | 621 | 372.6 USD |
 | F = 100 | 2021 | 1,212.6 USD |
+
+**Check by counting** (`scripts/check_reads.py`, `logs/part3_reads.csv`). For the user `<prefix>_u00000` of `f25`, `f30`, `f60` and `f100`, counters placed around the Datastore calls show 21, 621, 1221 and 2021 entities returned to the client by the original code, for 1, 32, 62 and 102 queries: for F = 30 and above, one rejected `IN` query followed by F + 1 queries, one per author. This matches the assumption above and shows that the fallback path is really the one executed. Limits: one user per dataset; the entities counted are those returned to the client, I did not compare them with the reads billed; the count was not repeated for the datasets of the U and P series, where the code path is the single `IN` query.
 
 Crossing F = 30 multiplies both the latency and the Datastore cost by about 30.
 
@@ -251,9 +255,9 @@ Median server time of the new code for every F (ms, mean of 2 runs): F = 5 to 25
 - A staircase with steps at F = 30, 60 and 90: confirmed qualitatively (see above for the precision). The step height of 15 to 20 ms was right for two steps out of three and about half of the first step.
 - The cost of one query with 30 values (the biggest uncertainty I had named) was not measured separately; the steps suggest about 21 ms per extra group.
 - Same answers: confirmed on 40 users of 4 datasets and on one user through the deployed version. I did not observe any difference in the order of posts created in the same second.
-- Entities read and cost: not measured, this remains the calculation of the hypotheses (41 and 81 entities, about 24.6 and 48.6 USD per million timelines at F = 30 and F = 100, instead of 621 and 2021, and 372.6 and 1,212.6 USD).
+- Entities read and cost: the numbers of entities were counted (`scripts/check_reads.py`): 41, 61 and 81 entities at F = 30, 60 and 100 with the new code, for 2, 3 and 4 queries, against 621, 1221 and 2021 with the original code, as predicted. The cost in USD remains a calculation from these counts: about 24.6, 36.6 and 48.6 USD per million timelines instead of 372.6, 732.6 and 1,212.6 USD.
 
-**Cost and limits of the fix.** The change is about 15 lines in one function (`part3/main.py`); there is no change in the data, the index or the dependencies. The queries are still run one after the other, so the time still grows with the number of groups, by about 21 ms for each additional group of 30 authors (this is an extrapolation beyond F = 100, not a measurement). Two things I did not try: running the group queries in parallel, and storing a precomputed timeline for each user, which would move the cost to the writes. The capacity of Part 2 was not measured again with the new code, and the second candidate bottleneck (one request at a time per instance) was not tried. Each measurement concerns one user (`-u 1`, the user `f<F>_u00000`).
+**Cost and limits of the fix.** *Complexity:* about 15 lines in one function (`part3/main.py`); no change in the data, the index or the dependencies. *Money:* fewer entity reads (see above), hence about 15 to 25 times fewer Datastore read charges for the timelines with F = 30 to 100, computed with the price of the `eur3` page; no additional instance or index. The correction itself cost about 1 instance-hour and about 45,000 reads for the two checks, `part3_compare.py` and `check_reads.py` (section 5). *Data consistency:* for F up to 29 the code is the same single query as before. Beyond that, both the original and the new code run several queries one after the other, outside any transaction, so a post written between two of these queries may be missed or seen only by one of them; I did not test this case, and it only concerns posts written while a timeline is being built. Posts created in the same second can come in a different order. *Time:* the queries are still run one after the other, so the time grows with the number of groups, by about 21 ms for each additional group of 30 authors (an extrapolation beyond F = 100, not a measurement). Two things I did not try: running the group queries in parallel, and storing a precomputed timeline for each user, which would move the cost to the writes. The capacity of Part 2 was not measured again with the new code, and the second candidate bottleneck (one request at a time per instance) was not tried. Each measurement concerns one user (`-u 1`, the user `f<F>_u00000`).
 
 ## 3. Verdicts
 
@@ -274,8 +278,8 @@ Median server time of the new code for every F (ms, mean of 2 runs): F = 5 to 25
 1. *How many instances served each measurement?* Part 1: exactly 1 in all 52 runs. Part 2: 1, 2 and 4 in the 14 runs of each version (42 runs). Part 3: exactly 1 in all 52 runs. Counted as the number of distinct `X-Instance` values among the HTTP 200 answers (`logs/check_part1.txt`, `figures/part2_checks.csv`, `logs/part3_summary.txt`). Before the Part 2 runs, `gcloud app instances list` showed 2 instances for `fixed2` and 4 for `fixed4`.
 2. *Are the runs independent?* Within each version the datasets (Parts 1 and 3) or the concurrency levels (Part 2) were run in random order, with 2 repetitions. The versions were not interleaved: the three versions of Part 2 were measured one after the other within about 70 minutes, and in Part 3 the original code was measured before and after the new code. The measurements of the original code differ by about 8 to 11% inside the Part 3 session and by a factor of 1.35 to 1.8 between the Part 1 and the Part 3 sessions, without established explanation (Part 1 was run around 23:30 UTC and Part 3 around 13:00 UTC; I did not test whether the time of day plays a role). The second repetition is slower than the first in all the cases of Fig. 1a. I therefore compare values only inside one session, and treat differences below about 10% as noise.
 3. *What is the share of the network?* Part 1: client latency minus server time is 12 to 14 ms, about 37% of the latency for F up to 25 and about 1% at F = 100. In the Part 3 session the gap was about 30 ms at F = 20 and 13 to 22 ms for F from 30 to 100, for a reason I do not know. In Part 2 the latency includes the waiting time in the queue of the instance, so the network share was not computed separately.
-4. *What is counted as a failure?* An answer whose status is not 200, or a network error (status 0). Part 1: 0 out of the 52 runs (a pilot run on the autoscaled version had 2 failures out of 924 requests at its start). Part 2: 138 out of 142,479 requests (0.10%), only `gaierror` (92) and `ConnectionRefusedError` (46), none at C = 1 or 2, no HTTP error status. Part 3: 0. The causes of the failures of Part 2 are unknown.
-5. *Is the code path the one I think?* `scripts/check_in_limit.py` proves that `IN` is rejected above 30 values. The fallback to one query per author is read from `main.py`, not instrumented. The equality of the answers of the original and the new code was checked on 40 users of 4 datasets and on one user through the deployed version. The load generator records headers and status, not the content of the answers, so it cannot show that every answer was correct. Parts 1 and 3 query a single user per run (`-u 1`); Part 2 queries many users of `base` with F = 20, which stays on the single-query path.
+4. *What is counted as a failure?* An answer whose status is not 200, or a network error (status 0). Part 1: 0 out of the 52 runs (a pilot run on the autoscaled version had 2 failures out of 924 requests at its start). Part 2: 138 out of 142,479 requests (0.10%), only `gaierror` (92) and `ConnectionRefusedError` (46), none at C = 1 or 2, no HTTP error status. Part 3: 0. The only HTTP status code observed in all the measurements was 200; the failures are network-level errors (status 0 in the logs). The causes of the failures of Part 2 are unknown.
+5. *Is the code path the one I think?* `scripts/check_in_limit.py` proves that `IN` is rejected above 30 values. The fallback to one query per author was read from `main.py` and then observed by counting the queries sent to Datastore (`scripts/check_reads.py`: for F = 30, 60 and 100, one rejected `IN` query followed by F + 1 queries). The equality of the answers of the original and the new code was checked on 40 users of 4 datasets and on one user through the deployed version. The load generator records headers and status, not the content of the answers, so it cannot show that every answer was correct. Parts 1 and 3 query a single user per run (`-u 1`); Part 2 queries many users of `base` with F = 20, which stays on the single-query path.
 6. *How much did it cost?* See section 5.
 
 **Detailed notes by part.**
@@ -284,7 +288,7 @@ Median server time of the new code for every F (ms, mean of 2 runs): F = 5 to 25
 2. **Independence of runs.** Datasets were run in random order, with 2 repetitions. The gap between repetitions reaches about 20% for high F (F = 35: 476.6 and 577.2 ms). In Fig. 1a the second repetition is slower in all 6 cases; I could not establish why, so I do not rely on differences smaller than that gap.
 3. **Network share.** About 12 to 14 ms (see 2.1).
 4. **Failures.** 0 failures out of the 52 runs, only HTTP 200. A pilot run on the autoscaled version (`raw/pilot/test1.csv`) had 2 connection failures out of 924 requests, both at the very start of the run, most probably an instance still starting (not verified). Definition used: status other than 200, or a network error (status 0).
-5. **Code path.** `scripts/check_in_limit.py` proves that `IN` is rejected above 30 values. The fallback to one query per author is read from `main.py`, not measured. Each run queries a single user (`-u 1`), so the results describe that user's timeline, not an average over users.
+5. **Code path.** `scripts/check_in_limit.py` proves that `IN` is rejected above 30 values. The fallback to one query per author was read from `main.py` and then confirmed by counting the queries (see Part 1). Each run queries a single user (`-u 1`), so the results describe that user's timeline, not an average over users.
 
 6. **Instances that served the Part 2 measurements.** In all 42 runs the number of distinct instances that answered was equal to N (1, 2 and 4; `figures/part2_checks.csv`, column `instances_serving`, from the `X-Instance` header). Before the measurements, `gcloud app instances list` showed 2 instances for `fixed2` and 4 for `fixed4`.
 7. **Failures in Part 2.** 138 failures out of 142,479 requests (0.10%): 37 of 24,865 for N = 1, 45 of 41,289 for N = 2 and 56 of 76,325 for N = 4. They are of two kinds only, both on the client side of the connection: `gaierror` (name resolution; 92 in total) and `ConnectionRefusedError` (46 in total). There was no HTTP error status. There was no failure for C = 1 or 2 in any version; failures start at C = 4 (N = 2 and 4) or C = 8 (N = 1). I do not know their cause. I did not remove them from the analysis; throughput counts only the HTTP 200 answers.
@@ -325,15 +329,34 @@ I used an AI assistant (Claude) during this project to explain concepts, write t
 
 ## Reproduce
 
+Regenerate every figure, every plotted-values CSV file and the summary tables from the raw logs (no measurement is run and nothing is deployed):
+
+```sh
+pip install matplotlib
+bash scripts/make_all.sh
+```
+
+Check the deliverables listed in the assignment: `python scripts/check_deliverables.py`.
+
+Run the measurements again (they cost money: stop each version after use):
+
 ```sh
 P=tinyinsta-512819
+pip install -r bench/requirements.txt
+# one seed command per dataset of section 1, for example:
 python bench/seed_exact.py --project $P --prefix base --users 1000 --posts-per-user 20 --followees 20 --rest --threads 3
 python scripts/count_dataset.py $P base
-gcloud app versions start fixed1 --service default --project=$P
+# Part 1 and Part 2, version fixed1 (fixed2 and fixed4: see section 1 for how they were deployed)
+./deploy_fixed.sh 1 --project=$P
 URL=$(gcloud app versions describe fixed1 --service default --project=$P --format='value(versionUrl)')
 ./scripts/part1.sh "$URL" 2
+./scripts/part2.sh 1 "$URL" 2
 gcloud app versions stop fixed1 --service default --project=$P
-python scripts/check_runs.py raw/part1
-python scripts/plot_part1.py
-python scripts/part1_cout.py 0.06
+# Part 3
+./scripts/deploy_p3.sh --project=$P
+URL3=$(gcloud app versions describe p3a --service default --project=$P --format='value(versionUrl)')
+python scripts/part3_compare.py 10
+python scripts/check_reads.py
+./scripts/part3.sh p3a "$URL3" "$(seq -s ' ' 5 5 100)" 2
+gcloud app versions stop p3a --service default --project=$P
 ```
