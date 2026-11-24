@@ -1,0 +1,3 @@
+  24828 200,
+     24 0,gaierror
+     13 0,ConnectionRefusedError
