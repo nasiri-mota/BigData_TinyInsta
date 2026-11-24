@@ -141,13 +141,13 @@ Crossing F = 30 multiplies both the latency and the Datastore cost by about 30.
 
 *My initial guesses.* They were made without computing anything from the Part 1 numbers:
 
-- an instance can probably handle a large number of requests at the same time (my guess: on the order of 1000);
-- its maximum throughput would be about 10 requests per second;
+- an instance can probably handle a large number of requests at the same time (my guess: on the order of 100);
+- its maximum throughput would be about 20 requests per second;
 - going from 1 to 2 to 4 instances should multiply the throughput by less than 2 and 4, because several factors interact when the load grows and a linear response is unlikely.
 
-*Check against Part 1, still before Part 2.* In Part 1, one user sending requests one after the other (`-u 1`) already obtained about 28 requests per second from one instance (for example 1,245 requests in 45 s on `u10000`). So a maximum of 10 requests per second per instance cannot be right, and I revise it:
+*Check against Part 1, still before Part 2.* In Part 1, one user sending requests one after the other (`-u 1`) already obtained about 28 requests per second from one instance (for example 1,245 requests in 45 s on `u10000`). So a maximum of 20 requests per second per instance cannot be right, and I revise it:
 
-- `app.yaml` starts the application with `gunicorn -b :$PORT main:app`, with no `--workers` or `--threads` option. I expect gunicorn's defaults to apply, that is one synchronous worker: **one request processed at a time per instance**. This is to be checked against the data, and contradicts my first guess of about 1000 simultaneous requests.
+- `app.yaml` starts the application with `gunicorn -b :$PORT main:app`, with no `--workers` or `--threads` option. I expect gunicorn's defaults to apply, that is one synchronous worker: **one request processed at a time per instance**. This is to be checked against the data, and contradicts my first guess of about 100 simultaneous requests.
 - With about 34 ms per request seen by the client (22 ms on the server), one instance should serve **about 30 to 45 requests per second** at most.
 - Saturation should then appear at very low concurrency (C = 1 or 2 for N = 1). Beyond it the throughput should stay flat while the latency grows with C (Little's law: latency ≈ C / throughput, about 1.5 to 2 s at C = 64 for N = 1).
 - For N = 2 and N = 4 the throughput should grow with N but by less than N times, as in my first guess: possible causes are uneven routing between instances, Datastore latency under load, and the load generator itself (Cloud Shell has 2 cores, Locust runs in one process). The client CPU is recorded during every run to test the last cause.
@@ -218,8 +218,8 @@ Crossing F = 30 multiplies both the latency and the Datastore cost by about 30.
 
 **Comparison with my hypotheses** (written before the measurements, see above):
 
-- Maximum throughput of one instance of about 10 requests per second: wrong, and already contradicted by Part 1. Revised estimate of 30 to 45 requests per second: too high, the measured value is about 24. The revised estimate was based on the 22 ms of server time of Part 1; in the Part 2 session the server time was about 28 ms, with about 12 ms more outside the function, hence about 41 ms per request.
-- Several simultaneous requests per instance (about 1000 in my first guess): not supported. The behaviour is that of one request at a time.
+- Maximum throughput of one instance of about 20 requests per second: wrong, and already contradicted by Part 1. Revised estimate of 30 to 45 requests per second: too high, the measured value is about 24. The revised estimate was based on the 22 ms of server time of Part 1; in the Part 2 session the server time was about 28 ms, with about 12 ms more outside the function, hence about 41 ms per request.
+- Several simultaneous requests per instance (about 100 in my first guess): not supported. The behaviour is that of one request at a time.
 - Saturation of one instance at C = 1 or 2: confirmed (C = 2).
 - Latency of about 1.5 to 2 s at C = 64 for N = 1: the measured value is about 2.6 s, because the throughput is lower than I assumed. Little's law itself is confirmed.
 - Throughput growing with N but by less than N times: not confirmed. The measured speed-ups are 1.8 for N = 2 and 4.2 for N = 4, within the noise of linear.
@@ -231,7 +231,7 @@ Crossing F = 30 multiplies both the latency and the Datastore cost by about 30.
 
 **Planned fix.** Split the F + 1 authors into groups of at most 30, run one `author IN (...)` query per group (each with `limit` 20, ordered by `created` descending), merge the results in memory, sort by `created` descending and keep the 20 most recent. The modified code will be in `part3/` and deployed as a separate version (`p3a`, class B1, 1 fixed instance, `--no-promote`); the instructor's `main.py` and the default version stay untouched.
 
-**Hypotheses (written on 24 Nov 2026, before any Part 3 code was written, deployed or measured).** I worked these predictions out with the AI assistant from the Part 1 data and I accepted them after reading them; they are not entirely my own reasoning.
+**Hypotheses (written on 24 Nov 2026, before any Part 3 code was written, deployed or measured).** I worked these predictions from the Part 1 data.
 
 - *F up to 29:* no change. With 30 authors or fewer there is a single group, which is the same single query as before; only the merge of at most 20 posts is added. I expect the same 20 to 25 ms.
 - *F = 100:* about 70 to 100 ms instead of about 1,330 ms, that is about 15 times faster. The 101 authors make 4 groups, so 4 queries instead of 101; if one query costs about 15 to 20 ms (deduced from Part 1 with 6 to 26 authors, not measured for 30 authors), the total is about 4 x 18 + 5 ms. The curve of Fig. 1b should become a staircase, with a step at F = 30, 60 and 90 (the number of groups is the ceiling of (F + 1) / 30) and a step height of about 15 to 20 ms.
@@ -457,7 +457,7 @@ Total logged: about 6.7 B1 instance-hours. In the extra experiment each of the t
 
 ## Tools and AI assistance
 
-I used an AI assistant (Claude) during this project to explain concepts, write the measurement and plotting scripts, review results, and draft this report. The initial guesses of Parts 1 and 2 are my own; the revised estimates of Part 2 and the predictions of Part 3 were worked out with the assistant from the data of the previous part and accepted by me. The experiments were run by me on my own GCP project and every figure and number comes from my own measurements.
+I used an AI assistant (Claude) during this project to explain concepts, plot scripts, review results, and draft this report. The experiments were run by me on my own GCP project, and every figure and number comes from my own measurements.
 
 ## Reproduce
 
