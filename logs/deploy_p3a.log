@@ -1,0 +1,30 @@
+Services to deploy:
+
+descriptor:                  [/tmp/tmp.Cd1tKR4RDC/app-p3a.yaml]
+source:                      [/tmp/tmp.Cd1tKR4RDC]
+target project:              [tinyinsta-512819]
+target service:              [default]
+target version:              [p3a]
+target url:                  [https://p3a-dot-tinyinsta-512819.ew.r.appspot.com]
+target service account:      [tinyinsta-512819@appspot.gserviceaccount.com]
+
+
+     (add --promote if you also want to make this service available from
+     [https://tinyinsta-512819.ew.r.appspot.com])
+
+Beginning deployment of service [default]...
+Created .gcloudignore file. See `gcloud topic gcloudignore` for details.
+Uploading 2 files to Google Cloud Storage
+50%
+100%
+100%
+File upload done.
+Waiting for operation [apps/tinyinsta-512819/operations/operation-1795489561029-660fcfd7babe6-2581cc62-bcc78ea1] to complete...
+............................................................done.
+Deployed service [default] to [https://p3a-dot-tinyinsta-512819.ew.r.appspot.com]
+
+You can stream logs from the command line by running:
+  $ gcloud app logs tail -s default
+
+To view your application in the web browser run:
+  $ gcloud app browse
