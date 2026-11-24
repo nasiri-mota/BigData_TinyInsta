@@ -261,6 +261,22 @@ Median server time of the new code for every F (ms, mean of 2 runs): F = 5 to 25
 
 **Cost and limits of the fix.** *Complexity:* about 15 lines in one function (`part3/main.py`); no change in the data, the index or the dependencies. *Money:* fewer entity reads (see above), hence about 15 to 25 times fewer Datastore read charges for the timelines with F = 30 to 100, computed with the price of the `eur3` page; no additional instance or index. The correction itself cost about 1 instance-hour and about 45,000 reads for the two checks, `part3_compare.py` and `check_reads.py` (section 5). *Data consistency:* for F up to 29 the code is the same single query as before. Beyond that, both the original and the new code run several queries one after the other, outside any transaction, so a post written between two of these queries may be missed or seen only by one of them; I did not test this case, and it only concerns posts written while a timeline is being built. Posts created in the same second can come in a different order. *Time:* the queries are still run one after the other, so the time grows with the number of groups, by about 21 ms for each additional group of 30 authors (an extrapolation beyond F = 100, not a measurement). Two things I did not try: running the group queries in parallel, and storing a precomputed timeline for each user, which would move the cost to the writes. The capacity of Part 2 was not measured again with the new code, and the second candidate bottleneck (one request at a time per instance) was not tried. Each measurement concerns one user (`-u 1`, the user `f<F>_u00000`).
 
+#### Extra experiment: more threads per instance (version `p3b`)
+
+This experiment is not required by the assignment, which asks for one bottleneck; it tests the second candidate of Part 2, one request processed at a time per instance (limit of about 24 requests per second for one instance).
+
+**Planned change.** The application code is not modified (the original `main.py`). Only the start command changes: `entrypoint: gunicorn -b :$PORT --threads 4 main:app` instead of `gunicorn -b :$PORT main:app`. Version `p3b`: class B1, 1 fixed instance, `--no-promote`, deployed with a script `scripts/deploy_p3b.sh` that otherwise writes the same settings as `deploy_fixed.sh 1`. With threads, gunicorn is expected to use its threaded worker; I did not check gunicorn's documentation.
+
+**Hypotheses (written on 24 Nov 2026, before any code, deployment or measurement of this experiment).** These are my own predictions, made after the Part 2 analysis (about 28 ms spent in `get_timeline` and about 12 ms outside it, one request at a time).
+
+- *Throughput:* higher than with one request at a time, from about 24 to about 40 to 50 requests per second for one instance. The hypothesis is refuted if the saturated throughput stays within 10% of the 24 requests per second of `fixed1`.
+- *Latency at C = 64 for one instance:* lower than the 2.6 s of `fixed1`, because several requests can be processed at the same time; the decrease may not be large.
+- *Why it may not help much:* a part of the time is spent outside `get_timeline` (about 12 ms), and more threads may bring CPU contention, concurrency overhead or the limits of the resources of the instance. The throughput will therefore not be multiplied by 4, and the latency may not improve noticeably.
+
+**Measurement protocol.** Same as Part 2 for N = 1: C in {1, 2, 4, 8, 16, 32, 64}, 75 s per run, 2 repetitions in random order, one 20 s warm-up discarded, dataset `base`, with the same checks (instances that answered, CPU of the client). The original version `fixed1` is measured in the same session, before `p3b` (the 14 runs) and again after it (C = 8 and C = 64, 4 runs).
+
+Status: nothing has been deployed or measured for this experiment yet.
+
 ## 3. Verdicts
 
 | Dimension | Scales? | Up to where (tested) | Why (mechanism) | Evidence |
