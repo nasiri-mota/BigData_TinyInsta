@@ -1,0 +1,15 @@
+02:17:50 N=4 rep1 C=4
+02:19:06 N=4 rep1 C=64
+02:20:22 N=4 rep1 C=16
+02:21:37 N=4 rep1 C=32
+02:22:53 N=4 rep1 C=2
+02:24:09 N=4 rep1 C=1
+02:25:24 N=4 rep1 C=8
+02:26:40 N=4 rep2 C=8
+02:27:56 N=4 rep2 C=64
+02:29:12 N=4 rep2 C=2
+02:30:27 N=4 rep2 C=32
+02:31:43 N=4 rep2 C=1
+02:32:59 N=4 rep2 C=4
+02:34:14 N=4 rep2 C=16
+DONE -> stop the version: gcloud app versions stop fixed4

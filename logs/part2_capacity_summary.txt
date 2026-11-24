@@ -1,0 +1,9 @@
+N  peak  plateau  C_in_plateau        speedup  efficiency  failed
+1  24.9  24.2     2 4 8 16 32 64      1.0      1.0         37 / 24865 (0.149%)
+2  45.1  43.6     4 8 16 32 64        1.8      0.9         45 / 41289 (0.109%)
+4  102.6 102.3    32 64               4.23     1.06        56 / 76325 (0.073%)
+
+Little's law, absolute deviation of latency vs C/throughput (median over runs / max):
+N=1: median latency 2.4% / 12.6%   mean latency 0.3% / 4.0%
+N=2: median latency 6.8% / 22.9%   mean latency 0.3% / 4.7%
+N=4: median latency 21.5% / 41.4%   mean latency 0.5% / 10.1%

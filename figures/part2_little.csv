@@ -1,0 +1,4 @@
+N_instances,median_abs_dev_median_latency_pct,max_abs_dev_median_latency_pct,median_abs_dev_mean_latency_pct,max_abs_dev_mean_latency_pct
+1,2.4,12.6,0.3,4.0
+2,6.8,22.9,0.3,4.7
+4,21.5,41.4,0.5,10.1
