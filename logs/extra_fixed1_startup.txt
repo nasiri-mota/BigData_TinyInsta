@@ -1,0 +1,3 @@
+2026-11-24 15:22:48 default[fixed1]  [2026-11-24 15:22:48 +0000] [13] [INFO] Starting gunicorn 21.2.0
+2026-11-24 15:22:48 default[fixed1]  [2026-11-24 15:22:48 +0000] [13] [INFO] Using worker: sync
+2026-11-24 15:22:48 default[fixed1]  [2026-11-24 15:22:48 +0000] [15] [INFO] Booting worker with pid: 15

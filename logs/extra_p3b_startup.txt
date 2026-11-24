@@ -1,0 +1,3 @@
+2026-11-24 15:19:37 default[p3b]  [2026-11-24 15:19:37 +0000] [13] [INFO] Starting gunicorn 21.2.0
+2026-11-24 15:19:37 default[p3b]  [2026-11-24 15:19:37 +0000] [13] [INFO] Using worker: gthread
+2026-11-24 15:19:37 default[p3b]  [2026-11-24 15:19:37 +0000] [15] [INFO] Booting worker with pid: 15
