@@ -17,6 +17,7 @@ The time needed to build a timeline does not depend on the number of users (U) n
 | `main.py`, `app.yaml`, `index.yaml`, `requirements.txt`, `deploy_fixed.sh` | instructor, unmodified | application and deployment |
 | `bench/` | instructor, unmodified | `seed_exact.py` (data generator), `locustfile.py` (load generator) |
 | `SUJET.md`, `public/`, `site/`, `make-site.sh`, `.gitlab-ci.yml` | instructor | assignment |
+| `README_instructor.md`, `bench/README.md` | instructor | original course READMEs, kept for reference (this file is my report) |
 | `scripts/` | author | measurement orchestration, checks, figures |
 | `raw/` | author | raw Locust logs (`raw/part1/`, `raw/pilot/`) |
 | `logs/` | author | generation, counting and check logs |
