@@ -1,1 +1,2 @@
 2026-11-24T13:01:22Z Billing > Reports, project tinyinsta-512819, current month, credits excluded (link has credits=NONE): EUR 3.82 (period shown and remaining credit not recorded yet)
+2026-11-24T13:02:11Z Billing > Credits: about EUR 254 left of EUR 257 (welcome credit, value rounded by the page). Reports (credits excluded): EUR 3.82. Period shown not recorded.
