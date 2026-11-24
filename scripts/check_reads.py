@@ -10,7 +10,7 @@ Writes logs/part3_reads.csv. The entities returned are what the pricing counts a
 import csv, importlib.util, os, sys, types
 
 PROJECT = "tinyinsta-512819"
-DATASETS = ["f25", "f30", "f60", "f100"]
+DATASETS = ["u100", "u10000", "p10", "p1000", "f25", "f30", "f60", "f100"]
 
 class Counter:
     def __init__(self):

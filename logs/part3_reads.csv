@@ -1,4 +1,12 @@
 dataset,version,posts_returned,queries_attempted,queries_failed,entities_read_by_client
+u100,original,20,1,0,21
+u100,new,20,1,0,21
+u10000,original,20,1,0,21
+u10000,new,20,1,0,21
+p10,original,20,1,0,21
+p10,new,20,1,0,21
+p1000,original,20,1,0,21
+p1000,new,20,1,0,21
 f25,original,20,1,0,21
 f25,new,20,1,0,21
 f30,original,20,32,1,621

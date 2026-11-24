@@ -1,3 +1,11 @@
+u100 original posts returned=20  queries attempted=1    failed=0 entities read=21
+u100 new      posts returned=20  queries attempted=1    failed=0 entities read=21
+u10000 original posts returned=20  queries attempted=1    failed=0 entities read=21
+u10000 new      posts returned=20  queries attempted=1    failed=0 entities read=21
+p10 original posts returned=20  queries attempted=1    failed=0 entities read=21
+p10 new      posts returned=20  queries attempted=1    failed=0 entities read=21
+p1000 original posts returned=20  queries attempted=1    failed=0 entities read=21
+p1000 new      posts returned=20  queries attempted=1    failed=0 entities read=21
 f25 original posts returned=20  queries attempted=1    failed=0 entities read=21
 f25 new      posts returned=20  queries attempted=1    failed=0 entities read=21
 f30 original posts returned=20  queries attempted=32   failed=1 entities read=621

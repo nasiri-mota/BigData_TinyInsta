@@ -10,5 +10,6 @@ python scripts/part1_cout.py 0.06 > logs/part1_cout.log
 python scripts/plot_part2.py > logs/part2_summary_all.txt
 python scripts/part2_capacity.py > logs/part2_capacity_summary.txt
 python scripts/part2_server_time.py > logs/part2_server_time.txt
+python scripts/part2_little_saturation.py > logs/part2_little_saturation.txt
 python scripts/plot_part3.py > logs/part3_summary.txt
 echo "done: figures/*.png, figures/*.csv, logs/check_part1.txt, logs/part*_summary*.txt"
