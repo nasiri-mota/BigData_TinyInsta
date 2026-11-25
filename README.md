@@ -462,6 +462,7 @@ Total logged: about 6.7 B1 instance-hours. In the extra experiment each of the t
 | 24 Nov 2026, during attempt 2 of the extra experiment (between 16:51 and 17:27) | 1-24 Nov | EUR 3.82 | about EUR 253 of EUR 257 | Cost unchanged since 13:00: the report lags |
 | 24 Nov 2026, evening (time not recorded) | 1-24 Nov | EUR 4.42 | about EUR 252 of EUR 257 | Report still lagging |
 | 24 Nov 2026, 19:34 UTC (time of the command that recorded it) | 1-24 Nov | EUR 4.51 | about EUR 252 of EUR 257 | Last reading before submission |
+| 25 Nov 2026, 23:15 | 1-25 Nov | EUR 5.84 | about EUR 252 of EUR 257 | Last reading |
 
 The welcome credit pays these costs, and the credit left decreases accordingly. The total is probably still incomplete because of the lag, and may be higher in the final report. It should remain below the 20 USD of the budget alert (my estimate from the instance-hours above, about 6.7 B1 hours in all, and from the Datastore operations; it is not verified).
 
